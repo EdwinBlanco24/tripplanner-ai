@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba técnica: streaming de AgentCore desde el navegador</title>
+<style>
+  :root { color-scheme: light dark; --bd: #8884; --muted: #777; --ok: #1b7f3b; --bad: #b3261e; --warn: #a15c00; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.45 system-ui, sans-serif; margin: 0 auto; padding: 16px; max-width: 980px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 8px; }
+  p.sub { margin: 0 0 16px; color: var(--muted); }
+  section { border: 1px solid var(--bd); border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+  label { display: block; font-weight: 600; margin: 8px 0 3px; }
+  input, textarea { width: 100%; padding: 8px; border: 1px solid var(--bd); border-radius: 6px; font: inherit; background: transparent; color: inherit; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  button { padding: 8px 14px; border: 1px solid var(--bd); border-radius: 6px; font: inherit; cursor: pointer; background: #1b6ef322; color: inherit; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  pre { margin: 0; padding: 8px; border: 1px solid var(--bd); border-radius: 6px; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; font: 12px/1.4 ui-monospace, Consolas, monospace; }
+  #answer { font: 14px/1.5 system-ui, sans-serif; min-height: 60px; max-height: 360px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--bd); font-size: 12px; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); } .muted { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  td { border-bottom: 1px solid var(--bd); padding: 3px 6px; vertical-align: top; word-break: break-all; }
+  td:first-child { width: 34%; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .metric { border: 1px solid var(--bd); border-radius: 6px; padding: 6px 8px; }
+  .metric b { display: block; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>Prueba técnica: streaming de AgentCore desde el navegador</h1>
+<p class="sub">Spike del sprint S2 · login directo a Cognito · llamada directa al runtime del OrchestratorAgent con JWT (sin API Gateway).</p>
+
+<section id="loginBox">
+  <h2>1. Iniciar sesión (Cognito)</h2>
+  <div class="grid">
+    <div><label for="email">Correo</label><input id="email" type="email" autocomplete="username"></div>
+    <div><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password"></div>
+  </div>
+  <div class="row">
+    <button id="loginBtn" type="button">Iniciar sesión</button>
+    <button id="logoutBtn" type="button" disabled>Cerrar sesión</button>
+    <span id="authStatus" class="muted">Sin sesión. El token solo vive en memoria: al recargar la página se pierde.</span>
+  </div>
+</section>
+
+<section>
+  <h2>2. Enviar un mensaje al OrchestratorAgent</h2>
+  <label for="prompt">Mensaje</label>
+  <textarea id="prompt">Hola, ¿qué puedes hacer por mí?</textarea>
+  <div class="row">
+    <button id="sendBtn" type="button" disabled>Enviar</button>
+    <button id="stopBtn" type="button" disabled>Detener</button>
+    <button id="newSessionBtn" type="button">Nueva sesión</button>
+    <span class="muted">Sesión: <code id="sessionId"></code></span>
+  </div>
+</section>
+
+<section>
+  <h2>3. Respuesta acumulada (texto limpio)</h2>
+  <pre id="answer"></pre>
+  <div class="grid" style="margin-top:10px">
+    <div class="metric"><span class="muted">Cabeceras recibidas</span><b id="mHeaders">–</b></div>
+    <div class="metric"><span class="muted">Primer fragmento</span><b id="mFirst">–</b></div>
+    <div class="metric"><span class="muted">Último fragmento</span><b id="mLast">–</b></div>
+    <div class="metric"><span class="muted">Fragmentos</span><b id="mCount">–</b></div>
+  </div>
+  <p class="muted" style="margin:6px 0 0">Tiempos en ms desde que se lanzó la petición. Si el primer y el último fragmento están muy separados y llegan varios fragmentos, el streaming es incremental. Si llega todo junto al final, no lo es.</p>
+</section>
+
+<section>
+  <h2>4. Fragmentos recibidos (crudos)</h2>
+  <pre id="chunks"></pre>
+</section>
+
+<section>
+  <h2>5. Diagnóstico</h2>
+  <div id="diagMsg" class="muted">Aún no se ha enviado ninguna petición.</div>
+  <table id="diagTable" style="margin-top:8px"></table>
+  <h2 style="margin-top:12px">Cabeceras de respuesta visibles</h2>
+  <pre id="respHeaders">–</pre>
+  <p class="muted" style="margin:6px 0 0">Desde otro origen el navegador solo expone las cabeceras permitidas por <code>Access-Control-Expose-Headers</code> y las CORS-safelisted. Que falten no es un error.</p>
+</section>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- Configuración
+const REGION = "us-east-2";
+const COGNITO_CLIENT_ID = "27ri7q3j4etl4nm5ht6oki040r";
+const COGNITO_URL = "https://cognito-idp." + REGION + ".amazonaws.com/";
+const RUNTIME_ARN = "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_OrchestratorAgent-j62sZ9EWux";
+const INVOKE_URL = "https://bedrock-agentcore." + REGION + ".amazonaws.com/runtimes/" +
+  encodeURIComponent(RUNTIME_ARN) + "/invocations?qualifier=DEFAULT";
+
+// ---------------------------------------------------------------- Estado (solo en memoria)
+let accessToken = null;     // nunca se guarda en localStorage/sessionStorage ni se imprime
+let tokenExpiresAt = 0;
+let sessionId = newSessionId();
+let controller = null;
+
+const $ = (id) => document.getElementById(id);
+function newSessionId() { return "tp-spike-" + crypto.randomUUID(); }   // 45 caracteres (mínimo 33)
+function maskSub(token) {
+  try {
+    const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const sub = JSON.parse(atob(p + "=".repeat((4 - p.length % 4) % 4))).sub;
+    return typeof sub === "string" ? sub.slice(0, 8) + "…" : "?";
+  } catch (e) { return "?"; }
+}
+function setStatus(el, text, cls) { el.textContent = text; el.className = cls || "muted"; }
+function ms(t0) { return Math.round(performance.now() - t0); }
+
+function refreshUi() {
+  const logged = accessToken !== null;
+  $("sendBtn").disabled = !logged || controller !== null;
+  $("stopBtn").disabled = controller === null;
+  $("logoutBtn").disabled = !logged;
+  $("loginBtn").disabled = logged;
+  $("sessionId").textContent = sessionId;
+}
+
+// ---------------------------------------------------------------- Login directo a Cognito
+$("loginBtn").addEventListener("click", async () => {
+  const username = $("email").value.trim();
+  const password = $("password").value;
+  if (!username || !password) { setStatus($("authStatus"), "Escribe correo y contraseña.", "warn"); return; }
+  setStatus($("authStatus"), "Iniciando sesión…");
+  try {
+    const resp = await fetch(COGNITO_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+      },
+      body: JSON.stringify({
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: COGNITO_CLIENT_ID,
+        AuthParameters: { USERNAME: username, PASSWORD: password },
+      }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    $("password").value = "";
+    if (!resp.ok) {
+      setStatus($("authStatus"), "Cognito rechazó el inicio de sesión (" + resp.status + "): " + (data.__type || "error") + " – " + (data.message || ""), "bad");
+      return;
+    }
+    if (!data.AuthenticationResult) {
+      setStatus($("authStatus"), "Cognito pidió un paso adicional (" + (data.ChallengeName || "desconocido") + "), que esta página no soporta.", "warn");
+      return;
+    }
+    accessToken = data.AuthenticationResult.AccessToken;
+    tokenExpiresAt = Date.now() + (data.AuthenticationResult.ExpiresIn || 3600) * 1000;
+    setStatus($("authStatus"), "Sesión iniciada (usuario " + maskSub(accessToken) + "). El token vence en " + Math.round((data.AuthenticationResult.ExpiresIn || 3600) / 60) + " min.", "ok");
+  } catch (err) {
+    $("password").value = "";
+    setStatus($("authStatus"), "No se pudo contactar con Cognito: " + err.name + " – " + err.message + ". Revisa la consola (F12).", "bad");
+  }
+  refreshUi();
+});
+
+$("logoutBtn").addEventListener("click", () => {
+  accessToken = null;
+  setStatus($("authStatus"), "Sesión cerrada. El token se descartó de la memoria.");
+  refreshUi();
+});
+
+$("newSessionBtn").addEventListener("click", () => {
+  sessionId = newSessionId();
+  $("answer").textContent = "";
+  $("chunks").textContent = "";
+  refreshUi();
+});
+
+$("stopBtn").addEventListener("click", () => { if (controller) controller.abort(); });
+
+// ---------------------------------------------------------------- Envío con streaming
+function row(k, v, cls) {
+  const tr = document.createElement("tr");
+  const a = document.createElement("td"), b = document.createElement("td");
+  a.textContent = k; b.textContent = v; if (cls) b.className = cls;
+  tr.append(a, b); $("diagTable").append(tr);
+}
+
+function describeChunk(text) {
+  return JSON.stringify(text.length > 240 ? text.slice(0, 240) + "…" : text);
+}
+
+/* Extrae el texto de un evento SSE ("data: ..."). Cada "data:" suele ser JSON (una cadena o un objeto). */
+function sseText(block) {
+  const lines = block.split("\n").filter((l) => l.startsWith("data:"));
+  if (!lines.length) return "";
+  const raw = lines.map((l) => l.slice(5).replace(/^ /, "")).join("\n");
+  try {
+    const value = JSON.parse(raw);
+    return typeof value === "string" ? value : JSON.stringify(value);
+  } catch (e) { return raw; }
+}
+
+$("sendBtn").addEventListener("click", async () => {
+  const prompt = $("prompt").value.trim();
+  if (!prompt || !accessToken) return;
+  if (Date.now() > tokenExpiresAt) {
+    setStatus($("authStatus"), "El token venció: inicia sesión de nuevo.", "warn");
+    accessToken = null; refreshUi(); return;
+  }
+  $("answer").textContent = ""; $("chunks").textContent = ""; $("respHeaders").textContent = "–"; $("diagTable").textContent = "";
+  for (const id of ["mHeaders", "mFirst", "mLast", "mCount"]) $(id).textContent = "–";
+  setStatus($("diagMsg"), "Enviando…");
+  controller = new AbortController(); refreshUi();
+
+  const t0 = performance.now();
+  let first = null, last = null, count = 0, buffer = "", total = "", isSse = false;
+  try {
+    const resp = await fetch(INVOKE_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + accessToken,
+        "Content-Type": "application/json",
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": sessionId,
+      },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    });
+    $("mHeaders").textContent = ms(t0) + " ms";
+    const ctype = resp.headers.get("content-type") || "";
+    isSse = ctype.includes("text/event-stream");
+    const hdrs = []; resp.headers.forEach((v, k) => hdrs.push(k + ": " + v));
+    $("respHeaders").textContent = hdrs.join("\n") || "(ninguna visible)";
+    setStatus($("diagMsg"), resp.ok ? "Respuesta HTTP " + resp.status + ": el navegador sí pudo leer la respuesta (CORS permitido)." : "Respuesta HTTP " + resp.status + " " + resp.statusText + ".", resp.ok ? "ok" : "bad");
+    row("Código HTTP", resp.status + " " + resp.statusText, resp.ok ? "ok" : "bad");
+    row("Content-Type", ctype || "(no visible)");
+    row("Formato detectado", isSse ? "SSE (text/event-stream)" : "texto/JSON sin SSE");
+    row("Session-Id enviado", sessionId);
+
+    if (!resp.body) { row("Aviso", "El navegador no expone resp.body como stream.", "warn"); return; }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const piece = decoder.decode(value, { stream: true });
+      const t = ms(t0);
+      if (first === null) first = t; last = t; count++;
+      $("chunks").textContent += "+" + t + " ms · " + value.length + " B · " + describeChunk(piece) + "\n";
+      if (!resp.ok) { total += piece; continue; }
+      if (isSse) {
+        buffer += piece.replace(/\r\n/g, "\n");
+        let idx;
+        while ((idx = buffer.indexOf("\n\n")) >= 0) {
+          total += sseText(buffer.slice(0, idx));
+          buffer = buffer.slice(idx + 2);
+        }
+      } else { total += piece; }
+      $("answer").textContent = total;
+      $("mFirst").textContent = first + " ms"; $("mLast").textContent = last + " ms"; $("mCount").textContent = count;
+    }
+    if (isSse && buffer.trim()) total += sseText(buffer);
+    if (!resp.ok) { $("answer").textContent = "(cuerpo del error)\n" + total.slice(0, 2000); }
+    else { $("answer").textContent = total; }
+    $("mFirst").textContent = first === null ? "–" : first + " ms";
+    $("mLast").textContent = last === null ? "–" : last + " ms";
+    $("mCount").textContent = count;
+    row("Tiempo total", ms(t0) + " ms");
+    row("Fragmentos", count + (count > 1 && last - first > 50 ? " (llegaron repartidos en el tiempo: streaming incremental)" : count > 1 ? " (llegaron casi juntos)" : ""));
+    if (resp.status === 401 || resp.status === 403) row("Pista", "401/403: el JWT fue rechazado por AgentCore (cliente no permitido, token vencido o discoveryUrl incorrecta). El cuerpo del error está arriba.", "warn");
+  } catch (err) {
+    if (err.name === "AbortError") {
+      setStatus($("diagMsg"), "Petición detenida por el usuario.", "warn");
+    } else {
+      const corsLike = err instanceof TypeError;
+      setStatus($("diagMsg"), corsLike
+        ? "TypeError: " + err.message + ". Con fetch esto suele ser un bloqueo de CORS (el servidor no respondió al preflight o no envió Access-Control-Allow-Origin), pero también puede ser un fallo de red. Abre la consola (F12) → pestaña Red/Console para ver el motivo exacto."
+        : err.name + ": " + err.message, "bad");
+      row("Error", err.name + ": " + err.message, "bad");
+      row("¿CORS?", corsLike ? "Probable. Mira F12 → Console: 'blocked by CORS policy' lo confirma." : "No parece CORS.", corsLike ? "warn" : "muted");
+      console.error("Fallo en fetch hacia AgentCore:", err);
+    }
+  } finally {
+    controller = null; refreshUi();
+  }
+});
+
+refreshUi();
+</script>
+</body>
+</html>

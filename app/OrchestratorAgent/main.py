@@ -1,5 +1,8 @@
+import base64
+import json
 import logging
 import os
+import re
 from datetime import datetime
 from uuid import uuid4
 
@@ -216,18 +219,69 @@ def build_agent(
     )
 
 
+_SUB_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+
+
+def _bearer_token(context) -> str | None:
+    """Token Bearer de la cabecera Authorization, si AgentCore la entregó al código.
+
+    El SDK normaliza la clave a "Authorization". Solo llega si el runtime la
+    permite en requestHeaderAllowlist.
+    """
+    headers = getattr(context, "request_headers", None)
+    if not isinstance(headers, dict):
+        return None
+    value = headers.get("Authorization")
+    if not isinstance(value, str):
+        return None
+    scheme, _, token = value.strip().partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def _jwt_subject(token: str) -> str | None:
+    """Claim "sub" del payload del JWT. NO verifica la firma: AgentCore ya la validó (CUSTOM_JWT)."""
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(padded))
+    except ValueError:
+        return None
+    sub = claims.get("sub") if isinstance(claims, dict) else None
+    if isinstance(sub, str) and _SUB_PATTERN.fullmatch(sub):
+        return sub
+    return None
+
+
+def _mask(value: str) -> str:
+    return value[:8] + "…"
+
+
 @app.entrypoint
 async def invoke(payload, context):
     prompt = payload.get("prompt", "")
-    actor_id = payload.get("actor_id", "")
-    actor_source = "payload"
 
     if not isinstance(prompt, str):
         raise ValueError("prompt debe ser un string")
 
-    if not isinstance(actor_id, str) or not actor_id.strip():
-        actor_id = os.environ.get("DEFAULT_ACTOR_ID", "").strip()
-        actor_source = "DEFAULT_ACTOR_ID"
+    token = _bearer_token(context)
+    if token is not None:
+        # Con JWT validado por AgentCore, la identidad sale SOLO del token:
+        # cualquier actor_id del payload se ignora.
+        actor_id = _jwt_subject(token)
+        actor_source = "jwt"
+        if actor_id is None:
+            raise ValueError("El token de autorización no contiene un usuario válido")
+    else:
+        # Desarrollo local (agentcore dev): sin JWT se conserva la lógica anterior.
+        actor_id = payload.get("actor_id", "")
+        actor_source = "payload"
+        if not isinstance(actor_id, str) or not actor_id.strip():
+            actor_id = os.environ.get("DEFAULT_ACTOR_ID", "").strip()
+            actor_source = "DEFAULT_ACTOR_ID"
 
     if not actor_id:
         raise ValueError("actor_id debe ser un string no vacío")
@@ -240,8 +294,8 @@ async def invoke(payload, context):
         )
 
     logger.info(
-        "invoke actor_id=%s actor_source=%s session_id=%s",
-        actor_id.strip(),
+        "invoke actor=%s actor_source=%s session_id=%s",
+        _mask(actor_id.strip()),
         actor_source,
         session_id,
     )

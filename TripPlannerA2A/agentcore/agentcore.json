@@ -52,7 +52,19 @@
           "name": "DEFAULT_ACTOR_ID",
           "value": "mcp-memory-video-01"
         }
-      ]
+      ],
+      "requestHeaderAllowlist": [
+        "Authorization"
+      ],
+      "authorizerType": "CUSTOM_JWT",
+      "authorizerConfiguration": {
+        "customJwtAuthorizer": {
+          "discoveryUrl": "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_hVc7JUyoG/.well-known/openid-configuration",
+          "allowedClients": [
+            "27ri7q3j4etl4nm5ht6oki040r"
+          ]
+        }
+      }
     }
   ],
   "memories": [
