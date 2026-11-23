@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:InvokeAgentRuntime",
+        "bedrock-agentcore:GetAgentCard"
+      ],
+      "Resource": [
+        "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_FlightsAgent-5W5efEFbNx",
+        "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_FlightsAgent-5W5efEFbNx/runtime-endpoint/DEFAULT",
+        "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_WeatherAgent-CvtJPlH0zR",
+        "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_WeatherAgent-CvtJPlH0zR/runtime-endpoint/DEFAULT"
+      ]
+    }
+  ]
+}

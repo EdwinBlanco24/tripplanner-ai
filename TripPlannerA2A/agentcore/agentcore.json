@@ -1,0 +1,101 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "TripPlannerA2A",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:created-by": "agentcore-cli",
+    "agentcore:project-name": "TripPlannerA2A"
+  },
+  "runtimes": [
+    {
+      "name": "FlightsAgent",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "..\\app\\FlightsAgent/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A",
+      "envVars": [
+        {
+          "name": "TRAVEL_MCP_URL",
+          "value": "https://mcp.smithery.ai/luisarrieta956"
+        },
+        {
+          "name": "SMITHERY_SECRET_ID",
+          "value": "arn:aws:secretsmanager:us-east-2:458934380591:secret:tripplanner/smithery-api-key-2MQSEw"
+        }
+      ],
+      "additionalPolicies": [
+        "../../TripPlannerA2A/agentcore/policies/flights-smithery-secret-policy.json"
+      ]
+    },
+    {
+      "name": "WeatherAgent",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "..\\app\\WeatherAgent/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A"
+    },
+    {
+      "name": "OrchestratorAgent",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "..\\app\\OrchestratorAgent/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP",
+      "envVars": [
+        {
+          "name": "DEFAULT_ACTOR_ID",
+          "value": "mcp-memory-video-01"
+        }
+      ]
+    }
+  ],
+  "memories": [
+  {
+    "name": "TripPlannerMemory",
+    "eventExpiryDuration": 90,
+    "strategies": [
+      {
+        "type": "USER_PREFERENCE",
+        "name": "TravelerPreferences",
+        "description": "Preferencias de viaje del usuario (horarios, aerolíneas, asientos).",
+        "namespaceTemplates": [
+          "/preferences/{actorId}/"
+        ]
+      },
+      {
+        "type": "SUMMARIZATION",
+        "name": "SessionSummarizer",
+        "description": "Resumen por sesión de planificación de viaje.",
+        "namespaceTemplates": [
+          "/summaries/{actorId}/{sessionId}/"
+        ]
+      },
+      {
+        "type": "SEMANTIC",
+        "name": "TravelFacts",
+        "description": "Hechos relevantes del viaje recuperables por significado.",
+        "namespaceTemplates": [
+          "/facts/{actorId}/"
+        ]
+      }
+    ]
+  }
+  ],
+  "knowledgeBases": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "harnesses": [],
+  "datasets": [],
+  "payments": []
+}

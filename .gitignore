@@ -1,0 +1,63 @@
+# ============================================================
+# TripPlanner AI - archivos que NUNCA se versionan
+# ============================================================
+
+# --- Secretos y variables de entorno ------------------------
+.env
+.env.*
+*.env.local
+*.env
+!.env.example
+*.pem
+*.key
+*.pfx
+
+# --- Entornos de Python -------------------------------------
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# --- Node / frontend ----------------------------------------
+node_modules/
+dist/
+.vite/
+
+# --- AWS SAM / CDK / AgentCore CLI --------------------------
+.aws-sam/
+samconfig.local.toml
+cdk.out/
+**/cdk/node_modules/
+**/.cache/
+**/.cli/logs/
+# Carpetas de empaquetado que genera "agentcore package"
+**/staging/
+
+# --- Paquetes y copias --------------------------------------
+*.zip
+backups/
+*.bak-*
+*.backup
+.tmp*/
+
+# --- Sistema operativo y editores ---------------------------
+.DS_Store
+Thumbs.db
+
+# --- Artefactos de pruebas del taller (TripPlannerA2A) ------
+TripPlannerA2A/o6_result_*.json
+TripPlannerA2A/o11-*
+TripPlannerA2A/o12-*
+TripPlannerA2A/o13-*
+TripPlannerA2A/ensayo-*
+TripPlannerA2A/m8-*.json
+TripPlannerA2A/mcp_tools_full.json
+*-response*.json
+*-payload*.json
+o6_result_*.json
+o11-*
+o12-*
+o13-*
+ensayo-*
+m8-*.json
+mcp_tools_full.json
