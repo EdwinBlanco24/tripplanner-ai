@@ -21,8 +21,8 @@ Usuario ── CloudFront ── S3 (Vite + React + TypeScript)
    ├─ Canal 1 (JWT) ───────► API Gateway ─► Lambdas (Trips · Itineraries · Reservations · Preferences) ─► DynamoDB
    │
    └─ Canal 2 (JWT, stream) ► AgentCore Runtime · OrchestratorAgent (inbound CUSTOM_JWT)
-                                 ├─ A2A (SigV4) ─► FlightsAgent ─► MCP Smithery ─► Kiwi.com   (key en Secrets Manager)
-                                 ├─ A2A (SigV4) ─► WeatherAgent ─► MCP de clima (por definir en S3)
+                                 ├─ A2A (SigV4) ─► FlightsAgent ─► MCP Kiwi (https://mcp.kiwi.com, sin autenticación)
+                                 ├─ A2A (SigV4) ─► WeatherAgent ─► (MCP, SigV4) WeatherMcpServer (AgentCore Runtime) ─► Open-Meteo
                                  ├─ Tools ─ lambda:InvokeFunction ─► las mismas 4 Lambdas ─► DynamoDB
                                  └─ AgentCore Memory (TripPlannerMemory)
 Transversales: CloudWatch (logs y alarmas) · IAM (mínimo privilegio)
@@ -37,14 +37,13 @@ Transversales: CloudWatch (logs y alarmas) · IAM (mínimo privilegio)
 | **API Gateway (HTTP API)** | Entrada del canal 1 | Autorizador JWT nativo (issuer del User Pool, audiencia = app client). CORS restringido, throttling por etapa y por ruta, logs de acceso. |
 | **AWS Lambda** | Lógica de negocio | Cuatro funciones (Trips, Itineraries, Reservations, Preferences). Cada una acepta dos tipos de evento (ADR-02) y comparte una capa de código de negocio. Python 3.13. |
 | **DynamoDB** | Fuente de verdad del negocio | Tabla única `TripPlannerTable`, on-demand, PITR activado (ADR-01). |
-| **AgentCore Runtime** | Aloja los tres agentes | OrchestratorAgent (protocolo HTTP, inbound CUSTOM_JWT); FlightsAgent y WeatherAgent (protocolo A2A, IAM SigV4). |
+| **AgentCore Runtime** | Aloja los agentes y el servidor MCP de clima | OrchestratorAgent (protocolo HTTP, inbound CUSTOM_JWT); FlightsAgent y WeatherAgent (protocolo A2A, IAM SigV4); WeatherMcpServer (protocolo MCP, inbound AWS_IAM). |
 | **Strands Agents** | Marco de los agentes | Orquestación con tools, sesiones y memoria. |
-| **MCP Kiwi (Smithery)** | Vuelos reales | Streamable HTTP. Solo se expone al modelo la tool `kiwi_search_flight` (lista blanca). |
-| **MCP de clima** | Pronóstico | **Por definir en el sprint S3** (criterios: Streamable HTTP, preferiblemente sin API key, datos diarios de temperatura y lluvia). |
-| **Secrets Manager** | Secretos | Guarda la API key de Smithery (`tripplanner/smithery-api-key`). Solo FlightsAgent puede leerla. |
+| **MCP Kiwi** | Vuelos reales | Servidor oficial `https://mcp.kiwi.com` (Streamable HTTP, sin autenticación). Solo se expone al modelo la tool `kiwi_search_flight` (lista blanca; en Kiwi se llama `search-flight`). |
+| **WeatherMcpServer** | Pronóstico | Servidor MCP propio (FastMCP, Streamable HTTP, stateless) sobre Open-Meteo (sin API key). Tools `get_forecast` y `get_current_weather`. WeatherAgent lo invoca firmando con SigV4 (ADR-08). |
 | **AgentCore Memory** | Contexto conversacional | `TripPlannerMemory` con estrategias USER_PREFERENCE, SUMMARIZATION y SEMANTIC. `actorId` = `sub` del usuario (ADR-06). |
 | **S3 + CloudFront** | Hosting estático | Bucket privado con OAC, HTTPS obligatorio, fallback de SPA a `index.html`. |
-| **IAM** | Control de acceso | Un rol por función y por runtime; el Orchestrator solo puede invocar las cuatro Lambdas (ADR-03). |
+| **IAM** | Control de acceso | Un rol por función y por runtime; el Orchestrator solo puede invocar las cuatro Lambdas (ADR-03); WeatherAgent solo puede invocar el runtime WeatherMcpServer (ADR-08). |
 | **CloudWatch** | Observabilidad | Logs de Lambdas, API Gateway y AgentCore con retención de 30 días; alarmas de errores 5xx, throttling y duración. |
 
 ## 3. Flujos principales
@@ -107,6 +106,13 @@ Transversales: CloudWatch (logs y alarmas) · IAM (mínimo privilegio)
 - **Decisión.** AgentCore Memory solo aporta **contexto y preferencias conversacionales** (p. ej. "prefiere vuelos de mañana"). **DynamoDB es la fuente de verdad** de viajes, itinerarios, reservas y de las preferencias que el usuario edita en pantalla.
 - **Alternativas.** (a) Guardar todo en Memory: no es consultable ni editable desde el canal 1. (b) Ignorar Memory: pierde personalización entre sesiones.
 - **Consecuencias.** Pueden existir dos "preferencias" (inferida y explícita); la explícita de DynamoDB manda. Ninguna operación de negocio puede depender de Memory.
+
+### ADR-08 · Sin Smithery: Kiwi directo y un MCP de clima propio en AgentCore
+
+- **Contexto.** Smithery dejó de ser viable como proxy del MCP de Kiwi (retirado el 31/10/2026) y exigía una API key en Secrets Manager. El clima aún no tenía fuente real. Además, el evento `ui:flights` nunca se emitía: el agente de vuelos devolvía el bloque JSON dentro de un texto fragmentado en cientos de partes y el Orchestrator leía `str(result.message)` (la representación de un diccionario, con los saltos de línea escapados), de modo que el bloque no se encontraba.
+- **Decisión.** (1) FlightsAgent se conecta a `https://mcp.kiwi.com` sin cabecera de autenticación; se eliminan el secreto y su política. (2) El clima lo sirve `WeatherMcpServer`, un runtime AgentCore con protocolo MCP (puerto 8000, ruta `/mcp`, HTTP sin estado, entrada `AWS_IAM`) sobre Open-Meteo; WeatherAgent lo invoca con `bedrock-agentcore:InvokeAgentRuntime` y SigV4 (servicio `bedrock-agentcore`), con una política acotada a `runtime/TripPlannerA2A_WeatherMcpServer-*`. (3) Los bloques `flights` y `weather` **los construye el código** del agente a partir del resultado real de la tool (un hook `AfterToolCallEvent` y un `Agent` que anexa el bloque al final del stream), no el modelo; el Orchestrator une todos los bloques de texto del especialista antes de buscar el bloque y se queda con el último.
+- **Alternativas.** (a) Seguir con Smithery: servicio retirado. (b) Un MCP de clima público de terceros: sin control de contrato ni disponibilidad. (c) Una tool Python dentro de WeatherAgent: no cumple el objetivo de practicar MCP sobre AgentCore. (d) Dejar que el LLM escriba el JSON: fue la causa del defecto.
+- **Consecuencias.** Se elimina un secreto y su política. El ARN del runtime MCP solo se conoce tras el primer despliegue, por lo que el despliegue es en dos pasos (la variable `WEATHER_MCP_RUNTIME_ARN` de WeatherAgent se añade en el segundo). Sin esa variable WeatherAgent responde de forma honesta que no puede consultar el clima. El pronóstico cubre hoy y los 15 días siguientes (límite de Open-Meteo); fuera de ese horizonte el servidor devuelve un error claro. Kiwi no ofrece autenticación ni SLA: una caída de `mcp.kiwi.com` se traduce en el mismo fallback honesto de vuelos.
 
 ### ADR-07 · Riesgo: consumir el streaming de AgentCore desde el navegador
 

@@ -424,6 +424,77 @@ class StreamEventDetectionTests(unittest.TestCase):
         self.assertEqual(bt.status_for("otra_cosa")[0], "orchestrator")
 
 
+FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+
+
+def load_real_a2a_response() -> dict:
+    with open(os.path.join(FIXTURES, "s3c_flights_a2a_response.json"), encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+class RealA2AResponseTests(unittest.TestCase):
+    """Respuesta A2A REAL (recortada) del FlightsAgent desplegado: 356 fragmentos de texto, uno por part."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = load_real_a2a_response()
+        cls.result = types.SimpleNamespace(message={"role": "assistant", "content": [{"text": t} for t in cls.fixture["content_blocks"]]})
+
+    def test_fixture_has_the_shape_that_broke_the_extraction(self):
+        self.assertGreater(len(self.fixture["content_blocks"]), 300)
+        self.assertEqual(self.fixture["events_head"][0]["kind"], "Task(inicial)")
+        self.assertTrue(all(e["kind"] == "TaskArtifactUpdateEvent" for e in self.fixture["events_head"][1:]))
+        self.assertEqual(self.fixture["events_tail"][-1]["state"], "completed")
+
+    def test_the_old_repr_never_yielded_the_block(self):
+        old = str(self.result.message)  # lo que hacía _ask_specialist
+        self.assertTrue(old.startswith("{'role': 'assistant', 'content': [{'text':"))
+        self.assertEqual(bt.extract_json_block(old, "flights"), (old, None))
+
+    def test_specialist_text_joins_every_part_and_the_block_is_extracted(self):
+        text = bt.specialist_text(self.result)
+        self.assertEqual(text, "".join(self.fixture["content_blocks"]))
+        self.assertIn("```json", text)
+        cleaned, flights = bt.extract_json_block(text, "flights", expect=list)
+        self.assertEqual(len(flights), 5)
+        self.assertEqual({"airline", "flightNumber", "origin", "destination", "departureTime", "arrivalTime",
+                          "durationMinutes", "stops", "price", "currency", "bookingUrl"}, set(flights[0]))
+        self.assertNotIn("```", cleaned)
+        self.assertNotIn('"flights"', cleaned)
+        self.assertIn(flights[0]["flightNumber"], cleaned)  # el texto sigue describiendo los vuelos
+
+    def test_ask_flights_end_to_end_with_the_real_response(self):
+        emitted = []
+        real_result = self.result
+
+        class FakeRemote:
+            def __init__(self, endpoint, client_config=None):
+                self.endpoint = endpoint
+
+            def __call__(self, request):
+                return real_result
+
+        tools = {t.tool_name: t for t in main.build_specialist_tools(lambda c, d: emitted.append((c, d)))}
+        with mock.patch.object(main, "A2AAgent", FakeRemote), mock.patch.object(main, "create_a2a_client", return_value=object()), \
+                mock.patch.object(main, "ClientConfig", lambda httpx_client=None: None):
+            text = tools["ask_flights"]("vuelos")
+        self.assertEqual([c for c, _ in emitted], ["flights"])
+        self.assertEqual(len(emitted[0][1]["flights"]), 5)
+        self.assertNotIn("```", text)
+        self.assertFalse(text.startswith("{'role'"))
+
+    def test_last_block_wins_and_all_blocks_are_removed(self):
+        modelo = '```json\n{"flights": [{"flightNumber": "MODELO"}]}\n```'
+        codigo = '```json\n{"flights": [{"flightNumber": "CODIGO"}]}\n```'
+        cleaned, flights = bt.extract_json_block(f"Texto.\n\n{modelo}\n\n{codigo}", "flights")
+        self.assertEqual(flights, [{"flightNumber": "CODIGO"}])
+        self.assertEqual(cleaned, "Texto.")
+
+    def test_specialist_text_falls_back_for_unexpected_results(self):
+        self.assertEqual(bt.specialist_text(types.SimpleNamespace(message={"content": [{"text": "a"}, {"image": 1}, {"text": "b"}]})), "ab")
+        self.assertEqual(bt.specialist_text(types.SimpleNamespace(message={"content": []})), "")
+
+
 class SpecialistToolTests(unittest.TestCase):
     def test_ask_flights_emits_ui_and_strips_the_block(self):
         emitted = []

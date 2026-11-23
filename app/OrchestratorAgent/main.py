@@ -25,6 +25,7 @@ try:
     from business_tools import (
         build_business_tools,
         extract_json_block,
+        specialist_text,
         status_for,
         tool_use_started,
     )
@@ -33,6 +34,7 @@ except ModuleNotFoundError:
     from app.OrchestratorAgent.business_tools import (
         build_business_tools,
         extract_json_block,
+        specialist_text,
         status_for,
         tool_use_started,
     )
@@ -106,7 +108,9 @@ def _ask_specialist(endpoint: str, request: str) -> str:
 
     result = remote(request)
 
-    return str(result.message)
+    # Texto de TODAS las parts (el especialista transmite cientos de fragmentos). No usar str(result.message):
+    # es la repr de un dict y rompe la detección del bloque ```json.
+    return specialist_text(result)
 
 
 def build_specialist_tools(emit_ui) -> list:

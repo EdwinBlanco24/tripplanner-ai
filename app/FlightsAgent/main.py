@@ -12,6 +12,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.hooks import (
     AfterToolCallEvent,
+    BeforeInvocationEvent,
     BeforeToolCallEvent,
     HookProvider,
     HookRegistry,
@@ -19,6 +20,8 @@ from strands.hooks import (
 from strands.multiagent.a2a.executor import StrandsA2AExecutor
 from strands.tools.mcp import MCPClient
 from strands.tools.mcp.mcp_agent_tool import MCPAgentTool
+
+import flight_blocks
 
 logger = logging.getLogger("flights_agent")
 logger.setLevel(logging.INFO)
@@ -29,8 +32,13 @@ if not logging.getLogger().handlers and not logger.handlers:
 # --- Configuracion -----------------------------------------------------------
 
 # Unica tool MCP que se entrega al agente: {nombre MCP: nombre para Bedrock}.
-# Bedrock exige [a-zA-Z0-9_-]+, por eso el punto se renombra.
-ALLOWED_MCP_TOOLS = {"kiwi-flights.search-flight": "kiwi_search_flight"}
+# "search-flight" es el nombre del MCP oficial de Kiwi (https://mcp.kiwi.com); "kiwi-flights.search-flight" es el
+# nombre con espacio de nombres que usaba el proxy de Smithery (retirado el 31/10/2026; se conserva por compatibilidad).
+# Bedrock exige [a-zA-Z0-9_-]+, por eso se renombra a kiwi_search_flight.
+ALLOWED_MCP_TOOLS = {
+    "search-flight": "kiwi_search_flight",
+    "kiwi-flights.search-flight": "kiwi_search_flight",
+}
 
 CONNECT_TIMEOUT = timedelta(seconds=30)
 READ_TIMEOUT = timedelta(seconds=60)
@@ -131,6 +139,88 @@ class ToolTimingHooks(HookProvider):
 _timing_hooks = ToolTimingHooks()
 
 
+# --- Bloque estructurado de vuelos, construido en código (S3c) -----------------------
+
+# Tools cuyo resultado alimenta el bloque (nombre visible para el modelo).
+FLIGHT_TOOL_NAMES = ("kiwi_search_flight", "search_flights")
+
+
+class FlightsResultCollector(HookProvider):
+    """Guarda los vuelos del resultado REAL de la tool durante la invocación en curso.
+
+    Se vacía al empezar cada invocación (el agente se reutiliza entre turnos del mismo contexto A2A).
+    """
+
+    def __init__(self) -> None:
+        self.flights: list[dict] = []
+        self.last_call_flights: list[dict] = []
+
+    def register_hooks(self, registry: HookRegistry, **kwargs) -> None:
+        registry.add_callback(BeforeInvocationEvent, self._reset)
+        registry.add_callback(AfterToolCallEvent, self._collect)
+
+    def reset(self) -> None:
+        self.flights = []
+        self.last_call_flights = []
+
+    def _reset(self, event: BeforeInvocationEvent) -> None:
+        self.reset()
+
+    def _collect(self, event: AfterToolCallEvent) -> None:
+        if event.tool_use.get("name") not in FLIGHT_TOOL_NAMES or event.exception is not None:
+            return
+        flights = flight_blocks.normalize_result(flight_blocks.parse_tool_result(event.result))
+        self.last_call_flights = flights
+        self.flights.extend(flights)
+        logger.info("flights_collected count=%d total=%d", len(flights), len(self.flights))
+
+    def block_for(self, model_text: str) -> str:
+        """Texto ```json a anexar a la respuesta ('' si no hubo resultados)."""
+        pool = self.flights
+        if not pool:
+            return ""
+        chosen = flight_blocks.select_flights(pool, model_text)
+        if not chosen:
+            return ""
+        # Si el texto no menciona ningún vuelo se usan los más baratos de la ÚLTIMA búsqueda.
+        if not any(f.get("flightNumber") and f["flightNumber"] in model_text for f in chosen):
+            chosen = flight_blocks.select_flights(self.last_call_flights or pool, "")
+        return flight_blocks.build_flights_block(chosen)
+
+
+class FlightsAgent(Agent):
+    """Agent de Strands que anexa al final de su respuesta el bloque ```json construido en código.
+
+    El bloque va DESPUÉS del texto del modelo y antes del evento final; el consumidor (Orchestrator)
+    toma el último bloque con la clave "flights", así que el del código manda si el modelo escribió otro.
+    """
+
+    def __init__(self, *args, collector: FlightsResultCollector, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._collector = collector
+
+    async def stream_async(self, *args, **kwargs):
+        text_parts: list[str] = []
+        final_event = None
+        async for event in super().stream_async(*args, **kwargs):
+            if isinstance(event, dict) and "result" in event:
+                final_event = event  # se emite al final, después del bloque
+                continue
+            if isinstance(event, dict) and isinstance(event.get("data"), str):
+                text_parts.append(event["data"])
+            yield event
+        try:
+            block = self._collector.block_for("".join(text_parts))
+        except Exception:  # noqa: BLE001 - el bloque es un extra: nunca debe romper la respuesta
+            logger.exception("flights_block_failed")
+            block = ""
+        if block:
+            logger.info("flights_block_appended chars=%d", len(block))
+            yield {"data": block}
+        if final_event is not None:
+            yield final_event
+
+
 # --- Cliente MCP (global, lazy, una sola vez) -----------------------------------
 
 _mcp_lock = threading.Lock()
@@ -187,8 +277,14 @@ def _list_all_tools(client: MCPClient) -> list:
             return discovered
 
 
-def _start_mcp(url: str, api_key: str) -> tuple[MCPClient, list]:
-    headers = {"Authorization": f"Bearer {api_key}"}
+def _is_smithery_host(url: str) -> bool:
+    host = (urlsplit(url).hostname or "").lower()
+    return host == "smithery.ai" or host.endswith(".smithery.ai")
+
+
+def _start_mcp(url: str, api_key: str | None) -> tuple[MCPClient, list]:
+    # El MCP oficial de Kiwi no usa autenticación: sin key no se envía cabecera Authorization.
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
 
     def transport():
         return streamablehttp_client(
@@ -220,8 +316,9 @@ def _start_mcp(url: str, api_key: str) -> tuple[MCPClient, list]:
             )
 
         logger.info(
-            "MCP started url=%s discovered=%d delivered=%d (%s) rename_method=%s",
+            "MCP started url=%s auth=%s discovered=%d delivered=%d (%s) rename_method=%s",
             _safe_url(url),
+            "bearer" if headers else "none",
             len(discovered),
             len(allowed),
             ", ".join(t.tool_name for t in allowed),
@@ -256,12 +353,13 @@ def _get_mcp_tools() -> list | None:
             return None
 
         try:
-            api_key = _resolve_api_key()
-            if not api_key:
-                logger.warning(
-                    "MCP no configurado: falta SMITHERY_API_KEY o SMITHERY_SECRET_ID."
-                )
-                return None
+            # La key es OPCIONAL (solo la usaba el proxy de Smithery). Nunca se envía a otro host:
+            # si quedó configurada pero la URL ya no es de Smithery, se ignora.
+            api_key = _resolve_api_key() if _is_smithery_host(url) else None
+            if not api_key and (
+                os.environ.get("SMITHERY_API_KEY") or os.environ.get("SMITHERY_SECRET_ID")
+            ) and not _is_smithery_host(url):
+                logger.warning("Se ignora la API key de Smithery: el MCP configurado no es de Smithery.")
             _mcp_client, _mcp_tools = _start_mcp(url, api_key)
         except Exception as exc:
             _mcp_last_failure = time.monotonic()
@@ -303,25 +401,11 @@ aerolínea; no lo dupliques), salida y llegada en hora local, escalas, precio
 con moneda y el enlace bookingUrl. Termina con una línea de recomendación
 breve y justificada.
 
-Bloque JSON estructurado (lo consume una interfaz): al FINAL de cada respuesta
-con resultados, después de la recomendación, añade un único bloque de código
-```json con exactamente esta forma y las MISMAS opciones que describiste en el
-texto (máximo 5):
-
-```json
-{"flights": [{"airline": "Avianca", "flightNumber": "AV9821",
-  "origin": "BOG", "destination": "CTG",
-  "departureTime": "2026-12-04T07:15", "arrivalTime": "2026-12-04T08:55",
-  "durationMinutes": 100, "stops": 0, "price": 289000, "currency": "COP",
-  "bookingUrl": "https://..."}]}
-```
-
-Reglas del bloque: departureTime y arrivalTime en ISO 8601 local sin zona
-(YYYY-MM-DDTHH:MM); durationMinutes y stops son enteros; price es un número sin
-símbolos ni separadores; currency es el código de la moneda; si un dato no está
-disponible usa null. Los valores deben salir de la tool, nunca inventados. No
-pongas nada después del bloque. Si no hay resultados o la tool falla, NO incluyas
-el bloque.
+Datos estructurados: la interfaz recibe los vuelos en un bloque JSON que añade
+el sistema por su cuenta a partir del resultado real de la tool, ordenado según
+tu texto. Por eso NO escribas bloques JSON ni bloques de código. Menciona siempre
+el flightNumber EXACTO de cada opción que presentes (así el sistema sabe cuáles
+y en qué orden).
 
 Si la tool devuelve un error o 0 resultados, dilo claramente.
 """
@@ -360,13 +444,15 @@ def create_agent(context_id: str) -> Agent:
         prompt = FALLBACK_SYSTEM_PROMPT
         tool_list = []
 
-    return Agent(
+    collector = FlightsResultCollector()
+    return FlightsAgent(
         name="Flights Agent",
         description="Busca vuelos entre ciudades para una fecha futura dada.",
         system_prompt=prompt,
         tools=tool_list,
-        hooks=[_timing_hooks],
+        hooks=[_timing_hooks, collector],
         callback_handler=None,
+        collector=collector,
     )
 
 

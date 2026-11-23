@@ -1,0 +1,308 @@
+{
+ "description": "ToolResult real de search-flight (Kiwi MCP), recortado a 6 itinerarios.",
+ "result": {
+  "status": "success",
+  "toolUseId": "fixture",
+  "content": [
+   {
+    "text": "{\"query\": \"BOG → CTG on 04/12/2026, 1 adult\", \"currency\": \"USD\", \"passengers\": {\"adults\": 1, \"children\": 0, \"infants\": 0}, \"resultsCount\": 6, \"itineraries\": [{\"id\": \"049b0a6551370000f13fcadb_0\", \"tripType\": \"oneway\", \"price\": 114.0, \"priceFormatted\": \"114 USD\", \"totalDurationSeconds\": 5400, \"bookingUrl\": \"https://kiwi.com/u/mwg5s22dkq\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T18:15:00\", \"arrivalTime\": \"2026-12-04T19:45:00\", \"durationSeconds\": 5400, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T18:15:00\", \"arrivalTime\": \"2026-12-04T19:45:00\", \"durationSeconds\": 5400, \"carrier\": \"LA\", \"carrierName\": \"LATAM Airlines\", \"flightNumber\": \"LA4138\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}, {\"id\": \"049b0a655137000023dc4147_0\", \"tripType\": \"oneway\", \"price\": 132.0, \"priceFormatted\": \"132 USD\", \"totalDurationSeconds\": 5700, \"bookingUrl\": \"https://kiwi.com/u/f2tdtsrq7d\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T11:05:00\", \"arrivalTime\": \"2026-12-04T12:40:00\", \"durationSeconds\": 5700, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T11:05:00\", \"arrivalTime\": \"2026-12-04T12:40:00\", \"durationSeconds\": 5700, \"carrier\": \"LA\", \"carrierName\": \"LATAM Airlines\", \"flightNumber\": \"LA4112\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}, {\"id\": \"049b0a65513700008ece1dc4_0\", \"tripType\": \"oneway\", \"price\": 138.0, \"priceFormatted\": \"138 USD\", \"totalDurationSeconds\": 5520, \"bookingUrl\": \"https://kiwi.com/u/sm2zf5wh8n\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T14:40:00\", \"arrivalTime\": \"2026-12-04T16:12:00\", \"durationSeconds\": 5520, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T14:40:00\", \"arrivalTime\": \"2026-12-04T16:12:00\", \"durationSeconds\": 5520, \"carrier\": \"P5\", \"carrierName\": \"Wingo airlines\", \"flightNumber\": \"P57634\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}, {\"id\": \"049b0a655137000055ffb6b6_0\", \"tripType\": \"oneway\", \"price\": 139.0, \"priceFormatted\": \"139 USD\", \"totalDurationSeconds\": 5520, \"bookingUrl\": \"https://kiwi.com/u/w6sm6hfhux\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T06:35:00\", \"arrivalTime\": \"2026-12-04T08:07:00\", \"durationSeconds\": 5520, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T06:35:00\", \"arrivalTime\": \"2026-12-04T08:07:00\", \"durationSeconds\": 5520, \"carrier\": \"P5\", \"carrierName\": \"Wingo airlines\", \"flightNumber\": \"P57216\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}, {\"id\": \"049b0a655137000008f11284_0\", \"tripType\": \"oneway\", \"price\": 141.0, \"priceFormatted\": \"141 USD\", \"totalDurationSeconds\": 5400, \"bookingUrl\": \"https://kiwi.com/u/8tvjspvzqs\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T17:10:00\", \"arrivalTime\": \"2026-12-04T18:40:00\", \"durationSeconds\": 5400, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T17:10:00\", \"arrivalTime\": \"2026-12-04T18:40:00\", \"durationSeconds\": 5400, \"carrier\": \"LA\", \"carrierName\": \"LATAM Airlines\", \"flightNumber\": \"LA4122\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}, {\"id\": \"049b0a6551370000e6ff73a8_0\", \"tripType\": \"oneway\", \"price\": 149.0, \"priceFormatted\": \"149 USD\", \"totalDurationSeconds\": 5400, \"bookingUrl\": \"https://kiwi.com/u/8szqjt6hxr\", \"imageId\": \"cartagena_co\", \"baggage\": {\"personalItem\": 1, \"cabinBag\": 0, \"checkedBag\": 0}, \"outbound\": {\"from\": \"BOG\", \"to\": \"CTG\", \"departureTime\": \"2026-12-04T19:40:00\", \"arrivalTime\": \"2026-12-04T21:10:00\", \"durationSeconds\": 5400, \"stops\": 0, \"route\": [\"BOG\", \"CTG\"], \"cabinClass\": \"Economy\", \"segments\": [{\"from\": \"BOG\", \"to\": \"CTG\", \"fromCity\": \"Bogotá\", \"toCity\": \"Cartagena\", \"fromName\": \"El Dorado International\", \"toName\": \"Rafael Núñez International\", \"fromCountry\": \"Colombia\", \"toCountry\": \"Colombia\", \"departureTime\": \"2026-12-04T19:40:00\", \"arrivalTime\": \"2026-12-04T21:10:00\", \"durationSeconds\": 5400, \"carrier\": \"LA\", \"carrierName\": \"LATAM Airlines\", \"flightNumber\": \"LA4120\", \"cabinClass\": \"Economy\"}]}, \"inbound\": null}], \"searchTimeMs\": 4337, \"error\": null}"
+   }
+  ],
+  "structuredContent": {
+   "query": "BOG → CTG on 04/12/2026, 1 adult",
+   "currency": "USD",
+   "passengers": {
+    "adults": 1,
+    "children": 0,
+    "infants": 0
+   },
+   "resultsCount": 6,
+   "itineraries": [
+    {
+     "id": "049b0a6551370000f13fcadb_0",
+     "tripType": "oneway",
+     "price": 114.0,
+     "priceFormatted": "114 USD",
+     "totalDurationSeconds": 5400,
+     "bookingUrl": "https://kiwi.com/u/mwg5s22dkq",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T18:15:00",
+      "arrivalTime": "2026-12-04T19:45:00",
+      "durationSeconds": 5400,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T18:15:00",
+        "arrivalTime": "2026-12-04T19:45:00",
+        "durationSeconds": 5400,
+        "carrier": "LA",
+        "carrierName": "LATAM Airlines",
+        "flightNumber": "LA4138",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    },
+    {
+     "id": "049b0a655137000023dc4147_0",
+     "tripType": "oneway",
+     "price": 132.0,
+     "priceFormatted": "132 USD",
+     "totalDurationSeconds": 5700,
+     "bookingUrl": "https://kiwi.com/u/f2tdtsrq7d",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T11:05:00",
+      "arrivalTime": "2026-12-04T12:40:00",
+      "durationSeconds": 5700,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T11:05:00",
+        "arrivalTime": "2026-12-04T12:40:00",
+        "durationSeconds": 5700,
+        "carrier": "LA",
+        "carrierName": "LATAM Airlines",
+        "flightNumber": "LA4112",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    },
+    {
+     "id": "049b0a65513700008ece1dc4_0",
+     "tripType": "oneway",
+     "price": 138.0,
+     "priceFormatted": "138 USD",
+     "totalDurationSeconds": 5520,
+     "bookingUrl": "https://kiwi.com/u/sm2zf5wh8n",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T14:40:00",
+      "arrivalTime": "2026-12-04T16:12:00",
+      "durationSeconds": 5520,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T14:40:00",
+        "arrivalTime": "2026-12-04T16:12:00",
+        "durationSeconds": 5520,
+        "carrier": "P5",
+        "carrierName": "Wingo airlines",
+        "flightNumber": "P57634",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    },
+    {
+     "id": "049b0a655137000055ffb6b6_0",
+     "tripType": "oneway",
+     "price": 139.0,
+     "priceFormatted": "139 USD",
+     "totalDurationSeconds": 5520,
+     "bookingUrl": "https://kiwi.com/u/w6sm6hfhux",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T06:35:00",
+      "arrivalTime": "2026-12-04T08:07:00",
+      "durationSeconds": 5520,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T06:35:00",
+        "arrivalTime": "2026-12-04T08:07:00",
+        "durationSeconds": 5520,
+        "carrier": "P5",
+        "carrierName": "Wingo airlines",
+        "flightNumber": "P57216",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    },
+    {
+     "id": "049b0a655137000008f11284_0",
+     "tripType": "oneway",
+     "price": 141.0,
+     "priceFormatted": "141 USD",
+     "totalDurationSeconds": 5400,
+     "bookingUrl": "https://kiwi.com/u/8tvjspvzqs",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T17:10:00",
+      "arrivalTime": "2026-12-04T18:40:00",
+      "durationSeconds": 5400,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T17:10:00",
+        "arrivalTime": "2026-12-04T18:40:00",
+        "durationSeconds": 5400,
+        "carrier": "LA",
+        "carrierName": "LATAM Airlines",
+        "flightNumber": "LA4122",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    },
+    {
+     "id": "049b0a6551370000e6ff73a8_0",
+     "tripType": "oneway",
+     "price": 149.0,
+     "priceFormatted": "149 USD",
+     "totalDurationSeconds": 5400,
+     "bookingUrl": "https://kiwi.com/u/8szqjt6hxr",
+     "imageId": "cartagena_co",
+     "baggage": {
+      "personalItem": 1,
+      "cabinBag": 0,
+      "checkedBag": 0
+     },
+     "outbound": {
+      "from": "BOG",
+      "to": "CTG",
+      "departureTime": "2026-12-04T19:40:00",
+      "arrivalTime": "2026-12-04T21:10:00",
+      "durationSeconds": 5400,
+      "stops": 0,
+      "route": [
+       "BOG",
+       "CTG"
+      ],
+      "cabinClass": "Economy",
+      "segments": [
+       {
+        "from": "BOG",
+        "to": "CTG",
+        "fromCity": "Bogotá",
+        "toCity": "Cartagena",
+        "fromName": "El Dorado International",
+        "toName": "Rafael Núñez International",
+        "fromCountry": "Colombia",
+        "toCountry": "Colombia",
+        "departureTime": "2026-12-04T19:40:00",
+        "arrivalTime": "2026-12-04T21:10:00",
+        "durationSeconds": 5400,
+        "carrier": "LA",
+        "carrierName": "LATAM Airlines",
+        "flightNumber": "LA4120",
+        "cabinClass": "Economy"
+       }
+      ]
+     },
+     "inbound": null
+    }
+   ],
+   "searchTimeMs": 4337,
+   "error": null
+  }
+ }
+}

@@ -1,0 +1,15 @@
+[project]
+name = "weather-mcp-server"
+version = "0.1.0"
+description = "MCP server (Streamable HTTP) con el clima de Open-Meteo para el Trip Planner"
+requires-python = ">=3.14"
+dependencies = [
+    "mcp==1.30.0",
+    "httpx==0.28.1",
+    # AgentCore arranca el runtime con `opentelemetry-instrument main.py` y rechaza un ZIP sin ese ejecutable.
+    # Los otros agentes lo reciben de strands-agents; aqui no hay Strands, asi que se fijan las mismas versiones
+    # que resuelven sus ZIP desplegados.
+    "opentelemetry-api==1.45.2",
+    "opentelemetry-sdk==1.45.2",
+    "opentelemetry-instrumentation==0.66b2",
+]

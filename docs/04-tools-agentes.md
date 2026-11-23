@@ -83,7 +83,8 @@ Notas:
 - `update_preferences` reemplaza todas las preferencias: el modelo debe incluir las que quiere conservar.
 - Toda escritura hecha por una tool lleva `createdBy: "assistant"`.
 - Reservas FLIGHT a partir de `ask_flights`: el *system prompt* manda copiar tal cual en `details` `airline`, `flightNumber`, `origin`, `destination`, `departureTime`, `arrivalTime` y `bookingUrl` (omitiendo los `null`), y usar el `price` y la `currency` del vuelo como campos de la reserva, no dentro de `details` (el backend rechaza claves desconocidas). `bookingUrl` admite hasta 2048 caracteres.
-- FlightsAgent solo expone `kiwi_search_flight` (lista blanca). El MCP de clima se define en S3.
+- FlightsAgent solo expone `kiwi_search_flight` (lista blanca; en el MCP oficial de Kiwi, `https://mcp.kiwi.com`, se llama `search-flight`; sin autenticación). WeatherAgent solo expone `get_forecast(city, start_date, end_date, country_code?)` y `get_current_weather(city, country_code?)` del runtime `WeatherMcpServer` (Open-Meteo; SigV4; pronóstico de hoy a +15 días, rango máximo 16).
+- `ask_flights` y `ask_weather` devuelven al modelo texto limpio: unen todos los bloques de texto de la respuesta A2A del especialista (llegan fragmentados) y retiran el bloque ```json antes de entregarlo (ADR-08).
 
 ### 3.1 Acciones de las Lambdas (evento `source: "agent"`)
 
@@ -125,7 +126,7 @@ Errores antes de empezar (mensaje vacío, token sin usuario válido, sesión aus
 | `component` | `data` | Origen |
 |---|---|---|
 | `flights` | `{"flights":[{"airline","flightNumber","origin","destination","departureTime","arrivalTime","durationMinutes","stops","price","currency","bookingUrl"}]}` (hasta 10; el agente pide 5) | Bloque ```json de FlightsAgent, vía `ask_flights` |
-| `weather` | `{"weather": <lista u objeto>}` | Bloque ```json con la clave `weather` (WeatherAgent aún no lo emite) |
+| `weather` | `{"weather":{"location":"Cartagena de Indias, Colombia","days":[{"date","tempMax","tempMin","condition","rainProbability"?}]}}` (hasta 16 días; temperaturas en °C, `rainProbability` 0-100) | Bloque ```json de WeatherAgent construido en código, vía `ask_weather` |
 | `trip` | `{"trip":{…}}`; con `get_trip`: `{"trip","itinerary","reservations"}` | `create_trip` / `update_trip` / `get_trip` |
 | `trips` | `{"trips":[{…}]}` | `get_trips` |
 | `itinerary` | `{"tripId","days":[…],"updatedAt"}` (estructura de `02-modelo-datos.md`) | `create_itinerary` / `update_itinerary` / `get_itinerary` |
@@ -139,7 +140,7 @@ Errores antes de empezar (mensaje vacío, token sin usuario válido, sesión aus
 - `status`: el código detecta el inicio de un `toolUse` en los eventos de `stream_async` (`current_tool_use` o `contentBlockStart`), un evento por `toolUseId`; el mensaje sale de `TOOL_STATUS` en `business_tools.py`.
 - `text`: cada fragmento de texto del modelo (`event["data"]`).
 - `ui`: lo emite el **código** (una cola por petición alimentada por las tools) **después** de una tool con `ok: true`; el modelo no puede fabricarlo. Se vacía la cola tras cada evento del stream y al final.
-- `flights` / `weather`: FlightsAgent termina sus respuestas con un bloque ```json con la clave `flights` (misma información que el texto, máx. 5). `ask_flights` lo extrae, valida que sea una lista de objetos, emite el `ui` y devuelve al modelo el texto **sin** el bloque. `ask_weather` tiene el mismo mecanismo con la clave `weather`.
+- `flights` / `weather`: el bloque ```json lo construye el **código** del agente especialista, no el modelo. FlightsAgent y WeatherAgent guardan el resultado real de su tool MCP (hook `AfterToolCallEvent`) y, al terminar el stream, emiten un último fragmento de texto con el bloque (`{"flights":[…]}`, máx. 5 y en el orden en que el texto menciona cada `flightNumber`; o `{"weather":{…}}`), justo antes del evento final. El Orchestrator une todos los bloques de texto de la respuesta A2A (`specialist_text`), toma el **último** bloque con la clave pedida (`extract_json_block`), valida su forma, emite el `ui` y devuelve al modelo el texto **sin** bloques. Si la tool no devolvió datos, no hay bloque y no se emite `ui`.
 - Tras una escritura por chat (p. ej. `create_trip`), el frontend refresca sus listas del canal 1 al recibir el `ui` correspondiente o `done`.
 
 ### 4.3 Ejemplo

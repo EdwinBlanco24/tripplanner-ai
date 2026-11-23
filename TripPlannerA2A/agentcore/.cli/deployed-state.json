@@ -3,6 +3,11 @@
     "default": {
       "resources": {
         "runtimes": {
+          "WeatherMcpServer": {
+            "runtimeId": "TripPlannerA2A_WeatherMcpServer-7XJ7257LON",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_WeatherMcpServer-7XJ7257LON",
+            "roleArn": "arn:aws:iam::458934380591:role/AgentCore-TripPlannerA2A--ApplicationAgentWeatherMc-wbZLLkq0Y0Nn"
+          },
           "OrchestratorAgent": {
             "runtimeId": "TripPlannerA2A_OrchestratorAgent-j62sZ9EWux",
             "runtimeArn": "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_OrchestratorAgent-j62sZ9EWux",
@@ -26,7 +31,7 @@
           }
         },
         "stackName": "AgentCore-TripPlannerA2A-default",
-        "deployHash": "8de192120f03a501"
+        "deployHash": "496875cf1ebcbedc"
       }
     }
   }

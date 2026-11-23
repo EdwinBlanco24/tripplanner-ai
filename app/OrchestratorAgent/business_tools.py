@@ -76,26 +76,46 @@ _FENCE_RE = re.compile(r"```(?:json|JSON)?\s*(.*?)\s*```", re.DOTALL)
 
 
 def extract_json_block(text: str, key: str, *, expect=list, max_items: int = 10):
-    """Extrae un bloque ```json con la clave `key` (cuyo valor es del tipo `expect`).
+    """Extrae los bloques ```json con la clave `key` (cuyo valor es del tipo `expect`).
 
-    Devuelve (texto_sin_el_bloque, valor) o (texto_original, None) si no hay un bloque válido.
-    Si el valor es una lista se descartan los elementos que no sean objetos y se limita a `max_items`.
+    Devuelve (texto_sin_los_bloques, valor) o (texto_original, None) si no hay ningún bloque válido.
+    Se quitan TODOS los bloques válidos y manda el ÚLTIMO (el que el especialista anexa en código va al final,
+    así que prevalece sobre uno que el modelo hubiera escrito). Si el valor es una lista se descartan los
+    elementos que no sean objetos y se limita a `max_items`.
     """
     if not isinstance(text, str):
         return text, None
+    valid = []
     for match in _FENCE_RE.finditer(text):
         try:
             obj = json.loads(match.group(1))
         except ValueError:
             continue
-        if not isinstance(obj, dict) or key not in obj or not isinstance(obj[key], expect):
-            continue
-        value = obj[key]
-        if isinstance(value, list):
-            value = [item for item in value if isinstance(item, dict)][:max_items]
-        cleaned = (text[: match.start()] + text[match.end():]).strip()
-        return re.sub(r"\n{3,}", "\n\n", cleaned), value
-    return text, None
+        if isinstance(obj, dict) and key in obj and isinstance(obj[key], expect):
+            valid.append((match, obj[key]))
+    if not valid:
+        return text, None
+    value = valid[-1][1]
+    if isinstance(value, list):
+        value = [item for item in value if isinstance(item, dict)][:max_items]
+    cleaned = text
+    for match, _ in reversed(valid):
+        cleaned = cleaned[: match.start()] + cleaned[match.end():]
+    return re.sub(r"\n{3,}", "\n\n", cleaned.strip()), value
+
+
+def specialist_text(result) -> str:
+    """Texto completo de la respuesta de un especialista A2A (AgentResult).
+
+    El especialista transmite su respuesta en cientos de fragmentos (una part por fragmento): hay que unir el texto
+    de TODOS los bloques de contenido. `str(result.message)` devolvía la repr de un dict (con \\n escapados y la
+    respuesta partida en bloques), y por eso el bloque ```json de vuelos nunca se detectaba.
+    """
+    message = getattr(result, "message", None)
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, list):
+        return "".join(block["text"] for block in content if isinstance(block, dict) and isinstance(block.get("text"), str))
+    return str(result)
 
 
 def mask_user(user_id: str | None) -> str:
