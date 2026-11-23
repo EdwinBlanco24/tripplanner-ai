@@ -1,6 +1,6 @@
 # TripPlanner AI — Modelo de datos
 
-Tabla única **`TripPlannerTable`** · DynamoDB on-demand · cifrado en reposo (clave propiedad de AWS) · PITR activado · protección contra borrado.
+Tabla única **`TripPlannerTable`** · DynamoDB on-demand · cifrado en reposo con la clave administrada por AWS (`aws/dynamodb`, `SSEEnabled: true`) · PITR activado · protección contra borrado.
 
 - Clave de partición `PK` (string) y clave de ordenación `SK` (string).
 - Atributo `entityType` en todos los ítems: `PROFILE`, `PREFS`, `TRIP`, `ITINERARY`, `RESERVATION`.
@@ -16,7 +16,7 @@ Tabla única **`TripPlannerTable`** · DynamoDB on-demand · cifrado en reposo (
 | Atributo | Tipo | Notas |
 |---|---|---|
 | `entityType` | S | `PROFILE` |
-| `email` | S | Copia del claim `email` (informativa) |
+| `email` | S | **No se guarda hoy**: el canal 1 usa el *access token* de Cognito, que no incluye `email` ni `name`. Solo se guardaría si el token los trae (p. ej. un ID token) |
 | `name` | S | Nombre visible, máx. 80 |
 | `createdAt` | S | Se fija en el primer acceso |
 
@@ -102,6 +102,8 @@ Estructura de `days[]`:
 ### 1.6 Límites de negocio
 
 Hasta **100 viajes por usuario** y **50 reservas por viaje**. Así, un viaje completo (1 viaje + 1 itinerario + 50 reservas = 52 ítems) cabe en una sola transacción de DynamoDB (máx. 100 ítems).
+
+**Riesgo aceptado: los límites no son atómicos.** La Lambda cuenta los ítems (`Query` con `Select=COUNT`) y luego crea el nuevo con otra operación. Dos peticiones simultáneas del mismo usuario podrían pasar el límite por una unidad. Se acepta porque cada usuario opera casi siempre de forma secuencial y el exceso no compromete la integridad: el borrado en cascada sigue cabiendo en una transacción mientras el total no supere 100 ítems. Si deja de ser aceptable, se añadiría un contador en el ítem `PROFILE` con una condición de actualización atómica.
 
 ## 2. Patrones de acceso
 

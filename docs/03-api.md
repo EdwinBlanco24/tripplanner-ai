@@ -11,7 +11,7 @@ HTTP API de API Gateway con **autorizador JWT de Cognito**. Base: `https://<api-
 | Formato | JSON UTF-8. `Content-Type: application/json` en `POST`/`PUT`. Cuerpo máx. 256 KB. |
 | Fechas | `YYYY-MM-DD` (fecha de negocio) e ISO-8601 UTC (`createdAt`, `updatedAt`). La validación "fecha futura" usa la zona `America/Bogota`. |
 | CORS | Orígenes permitidos: el dominio de CloudFront del frontend y `http://localhost:5173` (solo en `dev`). Métodos `GET, POST, PUT, DELETE, OPTIONS`; cabeceras `Authorization, Content-Type`; `max-age` 3600; sin credenciales. Nunca `*`. |
-| Throttling | Etapa: 20 req/s en régimen y ráfaga de 40. Escrituras (`POST`, `PUT`, `DELETE`): 10 req/s por ruta. Excederlo devuelve 429. |
+| Throttling | **En todas las rutas** (`DefaultRouteSettings`): tasa de 10 req/s y ráfaga de 20. No hay límites distintos para las escrituras. Excederlo devuelve 429. |
 | Códigos de éxito | `200` lectura/actualización, `201` creación (con cuerpo), `204` borrado sin cuerpo. |
 
 ### 1.1 Formato de error
@@ -27,7 +27,7 @@ HTTP API de API Gateway con **autorizador JWT de Cognito**. Base: `https://<api-
 | 400 | `VALIDATION_ERROR` | JSON inválido, campos faltantes o fuera de rango, enums inválidos |
 | 401 | `UNAUTHORIZED` | Token ausente, vencido o inválido. Lo genera API Gateway (se configura una *Gateway Response* para usar este formato) |
 | 403 | `FORBIDDEN` | Token válido pero sin permiso para la operación. Un recurso de otro usuario **no** produce 403 sino 404, para no revelar su existencia |
-| 404 | `NOT_FOUND` | El viaje, itinerario o reserva no existe para este usuario |
+| 404 | `NOT_FOUND` | El viaje, itinerario o reserva no existe para este usuario. **Un `tripId` o `resId` de la ruta con formato inválido también devuelve 404** (no puede existir); en cambio el filtro `?tripId=` de `GET /reservations` con formato inválido devuelve 400 |
 | 409 | `CONFLICT` | Ya existe (itinerario duplicado) o cambio incompatible |
 | 409 | `LIMIT_REACHED` | Se alcanzó el máximo de viajes (100) o de reservas por viaje (50) |
 | 429 | `TOO_MANY_REQUESTS` | Throttling |
@@ -152,7 +152,7 @@ Errores: 400, 401, 404, 500.
 ## 4. Notas de implementación
 
 - **Rutas protegidas por defecto**: la ruta por defecto del autorizador es "requerido"; ninguna ruta es pública.
-- **Registro del usuario**: el primer acceso (cualquier ruta) crea `PROFILE` si no existe (A2 en `02-modelo-datos.md`) con `email` y `name` tomados de los claims.
+- **Registro del usuario**: el primer acceso (cualquier ruta) crea `PROFILE` si no existe (A2 en `02-modelo-datos.md`). Guarda `email` y `name` solo si el token los trae; el *access token* de Cognito no los incluye, así que en la práctica el perfil queda sin correo.
 - **Logs**: se registra `requestId`, ruta, código de respuesta y `sub` hasheado; nunca cuerpos completos ni tokens.
 - **Idempotencia**: las creaciones no son idempotentes en esta versión (cada `POST` crea un recurso nuevo). El frontend deshabilita el botón mientras la petición está en curso.
 - **Mismo contrato en el canal 2**: las tools del agente invocan la misma lógica con los mismos validadores (ver `04-tools-agentes.md`), por lo que los errores equivalen en código y mensaje.

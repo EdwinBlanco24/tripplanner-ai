@@ -27,7 +27,7 @@ Reglas del ciclo:
 Evento (invocación síncrona `RequestResponse`):
 
 ```json
-{ "source": "agent", "action": "createTrip", "userId": "<sub>", "payload": { "...": "..." } }
+{ "source": "agent", "action": "create_trip", "userId": "<sub>", "payload": { "...": "..." } }
 ```
 
 Respuesta de la Lambda:
@@ -45,16 +45,16 @@ Los nombres de las tools son `snake_case` (Bedrock solo admite `[a-zA-Z0-9_-]+`)
 
 | Tool | Guía | Propósito | Parámetros (sin `userId`) | Lambda · `action` |
 |---|---|---|---|---|
-| `create_trip` | CreateTrip | Crea un viaje a partir de lo hablado | `title`, `origin`, `destination`, `start_date`, `end_date`, `travelers`, `budget`, `currency`, `notes?` | Trips · `createTrip` |
-| `get_trips` | GetTrips | Lista los viajes o devuelve uno con itinerario y reservas | `trip_id?` | Trips · `listTrips` (sin `trip_id`) / `getTrip` (con `trip_id`) |
-| `update_trip` | UpdateTrip | Cambia campos de un viaje (incluye cancelar con `status`) | `trip_id`, y cualquiera de: `title`, `origin`, `destination`, `start_date`, `end_date`, `travelers`, `budget`, `currency`, `notes`, `status` | Trips · `updateTrip` |
-| `delete_trip` | (extra) | Borra un viaje con su itinerario y reservas | `trip_id`, `confirmed` | Trips · `deleteTrip` |
-| `create_itinerary` | CreateItinerary | Crea el itinerario día a día | `trip_id`, `days[]` (`date`, `weather?`, `items[]`) | Itineraries · `createItinerary` |
-| `update_itinerary` | UpdateItinerary | Reemplaza el itinerario con la versión corregida | `trip_id`, `days[]` | Itineraries · `updateItinerary` |
-| `create_reservation` | CreateReservation | Registra una reserva **simulada** (vuelo, hotel o actividad) | `trip_id`, `type`, `provider`, `details`, `price`, `currency`, `status?` | Reservations · `createReservation` |
-| `get_reservations` | GetReservations | Lista reservas del usuario o de un viaje | `trip_id?` | Reservations · `listReservations` |
-| `update_reservation` | UpdateReservation | Cambia estado, proveedor, detalles o precio | `trip_id`, `res_id`, y cualquiera de: `status`, `provider`, `details`, `price`, `currency` | Reservations · `updateReservation` |
-| `delete_reservation` | (extra) | Elimina una reserva | `trip_id`, `res_id`, `confirmed` | Reservations · `deleteReservation` |
+| `create_trip` | CreateTrip | Crea un viaje a partir de lo hablado | `title`, `origin`, `destination`, `start_date`, `end_date`, `travelers`, `budget`, `currency`, `notes?` | Trips · `create_trip` |
+| `get_trips` | GetTrips | Lista los viajes o devuelve uno con itinerario y reservas | `trip_id?` | Trips · `get_trips` (sin `trip_id`) / `get_trip` (con `trip_id`) |
+| `update_trip` | UpdateTrip | Cambia campos de un viaje (incluye cancelar con `status`) | `trip_id`, y cualquiera de: `title`, `origin`, `destination`, `start_date`, `end_date`, `travelers`, `budget`, `currency`, `notes`, `status` | Trips · `update_trip` |
+| `delete_trip` | (extra) | Borra un viaje con su itinerario y reservas | `trip_id`, `confirmed` | Trips · `delete_trip` |
+| `create_itinerary` | CreateItinerary | Crea el itinerario día a día | `trip_id`, `days[]` (`date`, `weather?`, `items[]`) | Itineraries · `create_itinerary` |
+| `update_itinerary` | UpdateItinerary | Reemplaza el itinerario con la versión corregida | `trip_id`, `days[]` | Itineraries · `update_itinerary` |
+| `create_reservation` | CreateReservation | Registra una reserva **simulada** (vuelo, hotel o actividad) | `trip_id`, `type`, `provider`, `details`, `price`, `currency`, `status?` | Reservations · `create_reservation` |
+| `get_reservations` | GetReservations | Lista reservas del usuario o de un viaje | `trip_id?` | Reservations · `get_reservations` |
+| `update_reservation` | UpdateReservation | Cambia estado, proveedor, detalles o precio | `trip_id`, `res_id`, y cualquiera de: `status`, `provider`, `details`, `price`, `currency` | Reservations · `update_reservation` |
+| `delete_reservation` | (extra) | Elimina una reserva | `trip_id`, `res_id`, `confirmed` | Reservations · `delete_reservation` |
 
 Notas:
 
@@ -66,14 +66,20 @@ Notas:
 
 ### 3.1 Acciones de las Lambdas (evento `source: "agent"`)
 
+Los nombres **canónicos** de acción están en `snake_case` y coinciden con los de las tools:
+
 | Lambda | Acciones |
 |---|---|
-| Trips | `createTrip`, `listTrips`, `getTrip`, `updateTrip`, `deleteTrip` |
-| Itineraries | `createItinerary`, `getItinerary`, `updateItinerary` |
-| Reservations | `createReservation`, `listReservations`, `getReservation`, `updateReservation`, `deleteReservation` |
-| Preferences | `getPreferences`, `updatePreferences` (reservadas para uso futuro) |
+| Trips | `create_trip`, `get_trips`, `get_trip`, `update_trip`, `delete_trip` |
+| Itineraries | `create_itinerary`, `get_itinerary`, `update_itinerary` |
+| Reservations | `create_reservation`, `get_reservations`, `get_reservation`, `update_reservation`, `delete_reservation` |
+| Preferences | `get_preferences`, `update_preferences` (reservadas para uso futuro) |
 
-`getItinerary` y `getReservation` existen en las Lambdas por simetría con la API, aunque ninguna tool las expone todavía (el detalle completo sale de `get_trips`).
+**Alias.** Las Lambdas también aceptan los nombres camelCase del diseño inicial (`createTrip`, `listTrips`, `getTrip`, `updateTrip`, `deleteTrip`, `createItinerary`, `getItinerary`, `updateItinerary`, `createReservation`, `listReservations`, `getReservation`, `updateReservation`, `deleteReservation`, `getPreferences`, `updatePreferences`) y los traducen al nombre canónico. El código nuevo debe usar siempre `snake_case`.
+
+`get_itinerary` y `get_reservation` existen en las Lambdas por simetría con la API, aunque ninguna tool las expone todavía (el detalle completo sale de `get_trips` con `trip_id`).
+
+**Respuesta de la Lambda al agente** (no es el formato de API Gateway): `{"ok": true, "statusCode": 200, "data": {...}}` o `{"ok": false, "statusCode": 400, "error": {"code", "message", "details"?}}`. Los `delete_*` exigen `payload.confirmed == true` y responden `statusCode` 200 con `data` (`deleted`, ids y, en viajes, `deletedItems`).
 
 ### 3.2 Permisos
 
