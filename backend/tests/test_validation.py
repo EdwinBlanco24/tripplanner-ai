@@ -226,6 +226,53 @@ class ReservationTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     v.validate_reservation_create(body)
 
+    @staticmethod
+    def flight_with_url(url):
+        return support.flight_reservation(details={
+            "flightNumber": "AV9821", "origin": "BOG", "destination": "CTG", "departureTime": "2026-12-04T07:15", "bookingUrl": url})
+
+    def test_long_booking_urls_are_allowed_up_to_2048_characters(self):
+        prefix = "https://www.kiwi.com/deep?booking_token="
+        for length in (1500, 2048):
+            url = prefix + "a" * (length - len(prefix))
+            self.assertEqual(len(url), length)
+            with self.subTest(length=length):
+                out = v.validate_reservation_create(self.flight_with_url(url))
+                self.assertEqual(out["details"]["bookingUrl"], url)
+
+    def test_booking_url_over_2048_characters_is_rejected(self):
+        url = "https://www.kiwi.com/deep?booking_token=" + "a" * (2049 - len("https://www.kiwi.com/deep?booking_token="))
+        self.assertEqual(len(url), 2049)
+        with self.assertRaises(ValidationError) as ctx:
+            v.validate_reservation_create(self.flight_with_url(url))
+        self.assertEqual(ctx.exception.details[0], {"field": "details.bookingUrl", "issue": "too_long"})
+
+    def test_booking_url_must_be_https(self):
+        for url in ("http://www.kiwi.com/x", "javascript:alert(1)", "JAVASCRIPT:alert(1)", "ftp://x.com", "//kiwi.com/x",
+                    "https:/kiwi.com", "data:text/html,x", "https://con espacio.com"):
+            with self.subTest(url=url), self.assertRaises(ValidationError) as ctx:
+                v.validate_reservation_create(self.flight_with_url(url))
+            self.assertEqual(ctx.exception.details[0]["field"], "details.bookingUrl")
+
+    def test_other_detail_values_keep_the_200_character_limit(self):
+        body = self.flight_with_url("https://www.kiwi.com/x")
+        body["details"]["airline"] = "A" * 201
+        with self.assertRaises(ValidationError) as ctx:
+            v.validate_reservation_create(body)
+        self.assertEqual(ctx.exception.details[0], {"field": "details.airline", "issue": "too_long"})
+
+    def test_a_2048_character_url_still_fits_the_details_size_limit(self):
+        details = {"airline": "A" * 200, "flightNumber": "B" * 200, "origin": "C" * 200, "destination": "D" * 200,
+                   "departureTime": "E" * 200, "arrivalTime": "F" * 200,
+                   "bookingUrl": "https://x.co/" + "a" * (2048 - len("https://x.co/"))}
+        out = v.validate_reservation_create(support.flight_reservation(details=details))
+        self.assertEqual(len(out["details"]["bookingUrl"]), 2048)
+
+    def test_update_also_accepts_long_urls(self):
+        details = {"flightNumber": "A", "origin": "B", "destination": "C", "departureTime": "x",
+                   "bookingUrl": "https://www.kiwi.com/" + "a" * 1500}
+        self.assertEqual(len(v.validate_reservation_update({"details": details}, {"type": "FLIGHT"})["details"]["bookingUrl"]), 1521)
+
     def test_hotel_checkout_before_checkin(self):
         body = {"type": "HOTEL", "provider": "H", "price": 1, "currency": "COP",
                 "details": {"hotelName": "H", "checkIn": "2026-12-07", "checkOut": "2026-12-04"}}

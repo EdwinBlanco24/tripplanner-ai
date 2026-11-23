@@ -97,7 +97,7 @@ Estructura de `days[]`:
 | `HOTEL` | `hotelName`, `checkIn`, `checkOut` | las tres |
 | `ACTIVITY` | `activityName`, `date`, `time` | `activityName`, `date` |
 
-`bookingUrl` debe empezar por `https://`. La reserva es **simulada**: no se contacta con el proveedor ni se cobra.
+`bookingUrl` debe empezar por `https://`, sin espacios, y admite hasta **2048 caracteres** (los enlaces de proveedores como Kiwi superan los 200); el resto de valores de `details` admiten hasta 200 caracteres. La reserva es **simulada**: no se contacta con el proveedor ni se cobra.
 
 ### 1.6 Límites de negocio
 

@@ -49,7 +49,7 @@ HTTP API de API Gateway con **autorizador JWT de Cognito**. Base: `https://<api-
 | `type` (reserva) | `FLIGHT` \| `HOTEL` \| `ACTIVITY` |
 | `status` (reserva) | `SIMULADA` \| `PENDIENTE` \| `CONFIRMADA` (por defecto `SIMULADA`) |
 | `provider` | texto 1–80 |
-| `details` | objeto con las claves permitidas por tipo (ver `02-modelo-datos.md`), valores texto ≤ 200, `bookingUrl` que empiece por `https://`, tamaño total ≤ 4 KB |
+| `details` | objeto con las claves permitidas por tipo (ver `02-modelo-datos.md`), valores texto ≤ 200 salvo `bookingUrl` (≤ 2048 caracteres, debe empezar por `https://` y no llevar espacios), tamaño total ≤ 4 KB |
 | itinerario | 1–30 días; fechas únicas dentro de `[startDate, endDate]` del viaje; ≤ 30 ítems por día; `time` `HH:MM`; `title` ≤ 120; `location` ≤ 120; `notes` ≤ 500; `type` ∈ `flight, hotel, activity, meal, transfer, other`; `rainProbability` 0–100 |
 | preferencias | `preferredDepartureWindow` ∈ `MORNING, AFTERNOON, NIGHT, ANY`; `budgetStyle` ∈ `ECONOMY, BALANCED, PREMIUM`; `interests` ≤ 10 textos de ≤ 40; `dietary` ≤ 100 |
 

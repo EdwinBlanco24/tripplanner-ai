@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import os
+import queue
 import re
 from datetime import datetime
 from uuid import uuid4
@@ -21,8 +22,20 @@ from strands.agent.a2a_agent import A2AAgent
 
 try:
     from sigv4_auth import SigV4Auth
+    from business_tools import (
+        build_business_tools,
+        extract_json_block,
+        status_for,
+        tool_use_started,
+    )
 except ModuleNotFoundError:
     from app.OrchestratorAgent.sigv4_auth import SigV4Auth
+    from app.OrchestratorAgent.business_tools import (
+        build_business_tools,
+        extract_json_block,
+        status_for,
+        tool_use_started,
+    )
 
 
 logger = logging.getLogger("orchestrator_agent")
@@ -82,15 +95,12 @@ def create_a2a_client() -> httpx.AsyncClient:
     )
 
 
-@tool
-def ask_flights(request: str) -> str:
-    """Delega en el Flights Agent la búsqueda de vuelos."""
-
+def _ask_specialist(endpoint: str, request: str) -> str:
     client = create_a2a_client()
     config = ClientConfig(httpx_client=client)
 
     remote = A2AAgent(
-        endpoint=FLIGHTS_AGENT_URL,
+        endpoint=endpoint,
         client_config=config,
     )
 
@@ -99,21 +109,31 @@ def ask_flights(request: str) -> str:
     return str(result.message)
 
 
-@tool
-def ask_weather(request: str) -> str:
-    """Delega en el Weather Agent la consulta del clima."""
+def build_specialist_tools(emit_ui) -> list:
+    """ask_flights y ask_weather. Si el especialista añade un bloque ```json con
+    "flights" / "weather", se emite como evento ui y el texto llega al modelo SIN el bloque."""
 
-    client = create_a2a_client()
-    config = ClientConfig(httpx_client=client)
+    @tool
+    def ask_flights(request: str) -> str:
+        """Delega en el Flights Agent la búsqueda de vuelos."""
 
-    remote = A2AAgent(
-        endpoint=WEATHER_AGENT_URL,
-        client_config=config,
-    )
+        text = _ask_specialist(FLIGHTS_AGENT_URL, request)
+        text, flights = extract_json_block(text, "flights", expect=list)
+        if flights:
+            emit_ui("flights", {"flights": flights})
+        return text
 
-    result = remote(request)
+    @tool
+    def ask_weather(request: str) -> str:
+        """Delega en el Weather Agent la consulta del clima."""
 
-    return str(result.message)
+        text = _ask_specialist(WEATHER_AGENT_URL, request)
+        text, weather = extract_json_block(text, "weather", expect=(list, dict))
+        if weather:
+            emit_ui("weather", {"weather": weather})
+        return text
+
+    return [ask_flights, ask_weather]
 
 
 def get_current_date() -> str:
@@ -197,13 +217,50 @@ Si la solicitud requiere vuelos y clima:
 
 No inventes información.
 Utiliza los resultados proporcionados por los especialistas.
+
+Gestión de viajes, itinerarios y reservas (tools de negocio):
+
+- Cuando el usuario quiera crear o guardar un viaje, usa create_trip con
+  título, origen, destino, fechas YYYY-MM-DD, número de viajeros, presupuesto y
+  moneda (COP por defecto). Si falta algún dato obligatorio, pídelo antes.
+- Para armar el itinerario por días usa create_itinerary (o update_itinerary si
+  ya existe), teniendo en cuenta el clima consultado con ask_weather cuando
+  esté disponible. Las fechas de los días deben estar dentro del viaje.
+- Registra reservas con create_reservation asociadas al tripId del viaje. Son
+  SIMULADAS: el estado por defecto es SIMULADA y los tipos son FLIGHT, HOTEL y
+  ACTIVITY. Aclara al usuario que no se realiza ningún cobro.
+- Para "mis viajes" usa get_trips; para "mis reservas" usa get_reservations; para
+  ver un viaje completo usa get_trip.
+- Antes de usar delete_trip o delete_reservation pide una confirmación
+  explícita al usuario y pasa confirmed=true solo después de que la dé.
+- Nunca pidas ni aceptes números de tarjeta, CVV ni otros datos de pago. Si el
+  usuario los ofrece, indícale que no son necesarios y que no los envíe.
+- Cuando crees un viaje o una reserva, responde siempre con el tripId o el resId
+  que devolvió la tool. No inventes identificadores: obtenlos de las tools.
+- Si una tool devuelve un error, explícalo con claridad y corrige los datos si
+  puedes; no digas que algo se guardó si la tool falló.
+- Si una tool de escritura (create_* o update_*) devuelve el error UNCERTAIN, la
+  operación pudo haberse completado: ANTES de repetirla consulta con get_trips,
+  get_reservations o get_itinerary si el recurso ya existe, y no lo dupliques.
+  Si existe, informa al usuario con sus identificadores; si no, reintenta una vez.
+- Al crear una reserva FLIGHT a partir de vuelos devueltos por ask_flights,
+  copia en details EXACTAMENTE, tal como los devolvió el especialista (sin
+  acortar, reformatear ni inventar nada): airline, flightNumber, origin,
+  destination, departureTime, arrivalTime y bookingUrl. El precio y la moneda
+  del vuelo van en los campos price y currency de la reserva (no dentro de
+  details). Omite las claves cuyo valor sea null. Nunca incluyas datos de tarjeta.
 """
 
 
 def build_agent(
     session_manager: AgentCoreMemorySessionManager,
+    user_id: str | None = None,
+    emit_ui=None,
 ) -> Agent:
+    """Agente por petición. `user_id` (del JWT) queda capturado en las tools de negocio."""
     current_date = get_current_date()
+    if emit_ui is None:
+        emit_ui = lambda component, data: None  # noqa: E731
 
     return Agent(
         name="Trip Planner Orchestrator",
@@ -211,8 +268,8 @@ def build_agent(
             current_date=current_date
         ),
         tools=[
-            ask_flights,
-            ask_weather,
+            *build_specialist_tools(emit_ui),
+            *build_business_tools(user_id, emit_ui),
         ],
         session_manager=session_manager,
         callback_handler=None,
@@ -260,12 +317,18 @@ def _mask(value: str) -> str:
     return value[:8] + "…"
 
 
-@app.entrypoint
-async def invoke(payload, context):
+GENERIC_ERROR_MESSAGE = "No pude completar la solicitud. Inténtalo de nuevo en unos momentos."
+
+
+def _resolve_identity(payload, context) -> tuple[str, str, str, str]:
+    """(prompt, actor_id, actor_source, session_id). Lanza ValueError con un mensaje apto para el usuario."""
     prompt = payload.get("prompt", "")
 
     if not isinstance(prompt, str):
         raise ValueError("prompt debe ser un string")
+
+    if not prompt.strip():
+        raise ValueError("El mensaje no puede estar vacío")
 
     token = _bearer_token(context)
     if token is not None:
@@ -300,21 +363,74 @@ async def invoke(payload, context):
         session_id,
     )
 
-    session_manager = create_memory_session_manager(
-        session_id=session_id,
-        actor_id=actor_id.strip(),
-    )
+    return prompt, actor_id.strip(), actor_source, session_id
 
-    agent = build_agent(
-        session_manager=session_manager,
-    )
 
+def _drain(ui_queue: "queue.SimpleQueue") -> list[dict]:
+    events = []
+    while True:
+        try:
+            events.append(ui_queue.get_nowait())
+        except queue.Empty:
+            return events
+
+
+@app.entrypoint
+async def invoke(payload, context):
+    """Stream TIPADO: cada yield es un dict {"type": status|text|ui|error|done, ...}."""
     try:
-        async for event in agent.stream_async(prompt):
-            if isinstance(event, dict) and isinstance(event.get("data"), str):
-                yield event["data"]
+        prompt, actor_id, actor_source, session_id = _resolve_identity(payload, context)
+    except ValueError as exc:
+        # Mensajes de validación propios (sin datos internos): se entregan como evento tipado.
+        logger.warning("invoke rechazado: %s", exc)
+        yield {"type": "error", "message": str(exc)}
+        yield {"type": "done"}
+        return
+
+    # Las tools de negocio solo reciben usuario cuando la identidad viene de un JWT validado:
+    # con DEFAULT_ACTOR_ID o actor_id del payload (desarrollo local) no se toca la base real.
+    user_id = actor_id if actor_source == "jwt" else None
+
+    ui_queue: "queue.SimpleQueue" = queue.SimpleQueue()
+
+    def emit_ui(component: str, data) -> None:
+        ui_queue.put({"type": "ui", "component": component, "data": data})
+
+    session_manager = None
+    announced: set[str] = set()
+    failed = False
+    try:
+        try:
+            session_manager = create_memory_session_manager(
+                session_id=session_id,
+                actor_id=actor_id,
+            )
+            agent = build_agent(session_manager, user_id=user_id, emit_ui=emit_ui)
+
+            async for event in agent.stream_async(prompt):
+                started = tool_use_started(event)
+                if started is not None and started[0] not in announced:
+                    announced.add(started[0])
+                    agent_name, message = status_for(started[1])
+                    yield {"type": "status", "agent": agent_name, "message": message}
+
+                if isinstance(event, dict) and isinstance(event.get("data"), str) and event["data"]:
+                    yield {"type": "text", "delta": event["data"]}
+
+                for ui_event in _drain(ui_queue):
+                    yield ui_event
+        except Exception as exc:  # noqa: BLE001 - nunca se exponen detalles internos al cliente
+            failed = True
+            logger.error("stream_failed error=%s", type(exc).__name__, exc_info=True)
+
+        for ui_event in _drain(ui_queue):
+            yield ui_event
+        if failed:
+            yield {"type": "error", "message": GENERIC_ERROR_MESSAGE}
+        yield {"type": "done"}
     finally:
-        session_manager.close()
+        if session_manager is not None:
+            session_manager.close()
 
 
 if __name__ == "__main__":

@@ -51,7 +51,26 @@
         {
           "name": "DEFAULT_ACTOR_ID",
           "value": "mcp-memory-video-01"
+        },
+        {
+          "name": "TRIPS_FUNCTION_ARN",
+          "value": "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-TripsFunction-UQ1WQM8Y7BDP"
+        },
+        {
+          "name": "ITINERARIES_FUNCTION_ARN",
+          "value": "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-ItinerariesFunction-RUWw8aRgZeUy"
+        },
+        {
+          "name": "RESERVATIONS_FUNCTION_ARN",
+          "value": "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-ReservationsFunction-l1MpjOnVCyBx"
+        },
+        {
+          "name": "PREFERENCES_FUNCTION_ARN",
+          "value": "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-PreferencesFunction-0rqwJQvoBhO3"
         }
+      ],
+      "additionalPolicies": [
+        "../../TripPlannerA2A/agentcore/policies/orchestrator-invoke-business-lambdas.json"
       ],
       "requestHeaderAllowlist": [
         "Authorization"

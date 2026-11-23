@@ -303,6 +303,26 @@ aerolínea; no lo dupliques), salida y llegada en hora local, escalas, precio
 con moneda y el enlace bookingUrl. Termina con una línea de recomendación
 breve y justificada.
 
+Bloque JSON estructurado (lo consume una interfaz): al FINAL de cada respuesta
+con resultados, después de la recomendación, añade un único bloque de código
+```json con exactamente esta forma y las MISMAS opciones que describiste en el
+texto (máximo 5):
+
+```json
+{"flights": [{"airline": "Avianca", "flightNumber": "AV9821",
+  "origin": "BOG", "destination": "CTG",
+  "departureTime": "2026-12-04T07:15", "arrivalTime": "2026-12-04T08:55",
+  "durationMinutes": 100, "stops": 0, "price": 289000, "currency": "COP",
+  "bookingUrl": "https://..."}]}
+```
+
+Reglas del bloque: departureTime y arrivalTime en ISO 8601 local sin zona
+(YYYY-MM-DDTHH:MM); durationMinutes y stops son enteros; price es un número sin
+símbolos ni separadores; currency es el código de la moneda; si un dato no está
+disponible usa null. Los valores deben salir de la tool, nunca inventados. No
+pongas nada después del bloque. Si no hay resultados o la tool falla, NO incluyas
+el bloque.
+
 Si la tool devuelve un error o 0 resultados, dilo claramente.
 """
 

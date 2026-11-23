@@ -88,6 +88,22 @@ class ReservationTests(support.BaseCase):
         self.assertEqual((resp["statusCode"], body_of(resp)["error"]["code"]), (404, "NOT_FOUND"))
         self.assertEqual(self.store.count_prefix(f"USER#{USER_A}", "TRIP#", entity_type="RESERVATION"), 0)
 
+    def test_http_api_accepts_a_1500_character_booking_url_and_rejects_bad_ones(self):
+        def post(url):
+            body = flight_reservation()
+            body["details"]["bookingUrl"] = url
+            return self.reservations(api_event("POST /trips/{tripId}/reservations", path_params=self.path, body=body))
+
+        long_url = "https://www.kiwi.com/booking?token=" + "x" * 1465
+        self.assertEqual(len(long_url), 1500)
+        ok = post(long_url)
+        self.assertEqual(ok["statusCode"], 201)
+        self.assertEqual(body_of(ok)["reservation"]["details"]["bookingUrl"], long_url)
+        for bad in ("https://www.kiwi.com/" + "x" * 2040, "http://www.kiwi.com/x", "javascript:alert(1)"):
+            resp = post(bad)
+            self.assertEqual((resp["statusCode"], body_of(resp)["error"]["code"]), (400, "VALIDATION_ERROR"), bad[:30])
+        self.assertEqual(self.store.count_prefix(f"USER#{USER_A}", "TRIP#", entity_type="RESERVATION"), 1)
+
     def test_card_data_is_rejected_and_nothing_is_stored(self):
         for extra in ({"cardNumber": "4111111111111111"}, {"cvv": "123"}):
             resp = self.reservations(api_event("POST /trips/{tripId}/reservations", path_params=self.path, body=flight_reservation(**extra)))

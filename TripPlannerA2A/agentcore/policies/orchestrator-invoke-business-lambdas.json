@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeBusinessLambdas",
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-TripsFunction-UQ1WQM8Y7BDP",
+        "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-ItinerariesFunction-RUWw8aRgZeUy",
+        "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-ReservationsFunction-l1MpjOnVCyBx",
+        "arn:aws:lambda:us-east-2:458934380591:function:tripplanner-backend-PreferencesFunction-0rqwJQvoBhO3"
+      ]
+    }
+  ]
+}

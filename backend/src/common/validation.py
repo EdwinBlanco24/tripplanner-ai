@@ -29,7 +29,8 @@ MAX_ITINERARY_DAYS = 30
 MAX_ITEMS_PER_DAY = 30
 MAX_INTERESTS = 10
 MAX_DETAILS_BYTES = 4096
-MAX_DETAIL_VALUE = 200  # docs/03-api.md: valores de details <= 200 (incluye bookingUrl)
+MAX_DETAIL_VALUE = 200  # docs/03-api.md: valores de details <= 200, salvo bookingUrl
+MAX_BOOKING_URL = 2048  # los enlaces de reserva de proveedores como Kiwi superan los 200 caracteres
 MAX_MONEY = Decimal("100000000")
 
 # Campos que se ignoran si llegan (los fija el servidor).
@@ -420,7 +421,7 @@ def _validate_details(c: Collector, rtype: str, details) -> dict | None:
             c.add(f"details.{str(key)[:40]}", "unknown_field", f"Campo no permitido en details: {str(key)[:40]}.")
             continue
         field = f"details.{key}"
-        text = _text(c, field, value, max_len=MAX_DETAIL_VALUE)
+        text = _text(c, field, value, max_len=MAX_BOOKING_URL if key == "bookingUrl" else MAX_DETAIL_VALUE)
         if text is _BAD:
             continue
         if key == "bookingUrl" and (not text.lower().startswith("https://") or any(ch.isspace() for ch in text)):
