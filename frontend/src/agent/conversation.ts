@@ -1,6 +1,6 @@
 import type { AgentEvent } from './events'
 import { initialConversation, reduce, type ConversationAction, type ConversationState } from './reducer'
-import { SessionTracker } from './session'
+import { SessionTracker, type SessionSnapshot } from './session'
 import type { StreamOutcome } from './streamClient'
 
 export const ROLLOVER_NOTICE = 'Retomamos en una sesión nueva; tus viajes siguen guardados.'
@@ -21,6 +21,13 @@ export interface ConversationDeps {
   sessions?: SessionTracker
   /** Se llama cuando el asistente escribio datos (ui de viajes/itinerarios/reservas o tools de negocio). */
   onDataChanged?: () => void
+}
+
+/** Todo lo necesario para seguir una conversacion en otra pagina: mensajes, resultados y la MISMA sesion de AgentCore. */
+export interface ConversationSnapshot {
+  state: ConversationState
+  session: SessionSnapshot
+  lastPrompt: string
 }
 
 /** Conversacion con el asistente: estado (reducer) + envio, detener, reintentar y sesion. Usable con useSyncExternalStore. */
@@ -72,6 +79,21 @@ export class Conversation {
 
   stop = (): void => {
     this.abort?.abort()
+  }
+
+  /** Copia de la conversacion (sin respuesta en curso) y de su sesion, para transferirla. */
+  snapshot = (): ConversationSnapshot => ({
+    state: reduce(this.state, { type: 'finish' }),
+    session: this.sessions.snapshot(),
+    lastPrompt: this.lastPrompt,
+  })
+
+  /** Reemplaza esta conversacion por la transferida; sigue en la misma sesion (si pasaron >14 min, el siguiente envio abre otra). */
+  adopt = (snap: ConversationSnapshot): void => {
+    this.abort?.abort()
+    this.sessions.restore(snap.session)
+    this.lastPrompt = snap.lastPrompt
+    this.dispatch({ type: 'replace', state: snap.state })
   }
 
   /** Nueva conversacion: borra el chat y los resultados y abre otra sesion. */

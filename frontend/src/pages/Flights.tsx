@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Button } from 'primereact/button'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
@@ -12,6 +12,9 @@ import { useConversation } from '../agent/useConversation'
 import { FlightCards } from '../agent/ui/Cards'
 import { ProgressLines } from '../agent/ui/ChatPanel'
 import { SafeMarkdown } from '../agent/ui/SafeMarkdown'
+import { ContinueBlock } from '../agent/ui/ContinueBlock'
+import { useContinueInAssistant } from '../agent/ui/useContinueInAssistant'
+import { continuePrompt } from '../agent/continuePrompt'
 import { CityAutocomplete } from '../components/CityAutocomplete'
 import { todayBogota } from '../utils/dates'
 import { validateFlightSearch } from '../utils/searchValidation'
@@ -29,6 +32,8 @@ export function Flights() {
   const [passengers, setPassengers] = useState<number | null>(1)
   const [band, setBand] = useState<TimeBand>('any')
   const [errors, setErrors] = useState<Errors>({})
+  const { requestContinue, dialog } = useContinueInAssistant(conv)
+  const [dismissed, setDismissed] = useState<number | null>(null)
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault()
@@ -36,6 +41,7 @@ export function Flights() {
     const errs = validateFlightSearch({ origin, destination, date, passengers }, todayBogota())
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+    setDismissed(null)
     conv.reset() // cada busqueda parte limpia (los resultados anteriores no se mezclan)
     void conv.send(composeFlightSearch({ origin: origin.trim(), destination: destination.trim(), date, band, passengers: passengers ?? 1 }))
   }
@@ -46,6 +52,8 @@ export function Flights() {
     navigate('/asistente')
   }
 
+  const prompt = continuePrompt(state)
+  const showContinue = prompt !== null && prompt.textId !== dismissed
   const flights = state.uiLatest.flights ? parseFlights(state.uiLatest.flights.data) : null
   const fullText = state.items.filter((i) => i.kind === 'text').map((i) => (i.kind === 'text' ? i.text : '')).join('\n\n')
   const err = (k: string) => errors[k] && <small className="field-error" role="alert">{errors[k]}</small>
@@ -54,9 +62,7 @@ export function Flights() {
     <section>
       <div className="page-head">
         <h1>Vuelos</h1>
-        <Link to="/asistente">
-          <Button label="Continuar en el asistente" icon="pi pi-comments" outlined />
-        </Link>
+        <Button label="Continuar en el asistente" icon="pi pi-comments" outlined onClick={requestContinue} />
       </div>
       <form className="card form grid-form" onSubmit={submit} noValidate>
         <div>
@@ -91,11 +97,13 @@ export function Flights() {
 
       <ProgressLines state={state} onRetry={() => void conv.retry()} />
       {flights && <FlightCards flights={flights} onReserve={reserve} busy={state.running} />}
+      {showContinue && prompt && <ContinueBlock prompt={prompt} onContinue={requestContinue} onDiscard={() => setDismissed(prompt.textId)} />}
       {fullText && (
         <Panel header="Ver respuesta completa" toggleable collapsed className="mb">
           <SafeMarkdown text={fullText} />
         </Panel>
       )}
+      {dialog}
     </section>
   )
 }

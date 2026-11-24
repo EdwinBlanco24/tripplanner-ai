@@ -1,0 +1,91 @@
+/* ===== Login dinamico (S6.1). Sin recursos externos: solo CSS, SVG en linea y PrimeIcons locales. ===== */
+.login-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: var(--tp-bg); }
+.showcase { position: relative; overflow: hidden; color: #fff; background: linear-gradient(135deg, #0f766e, #115e59, #134e4a, #0f766e); background-size: 300% 300%; animation: gradient-shift 24s ease-in-out infinite; display: flex; align-items: center; }
+.showcase-inner { width: 100%; max-width: 34rem; margin: 0 auto; padding: 3rem 2rem; }
+.showcase-title { font-family: var(--tp-font-title); font-size: 2.2rem; color: #fff; margin: 0 0 1.5rem; display: flex; align-items: center; gap: 0.6rem; }
+.showcase-phrase { font-family: var(--tp-font-title); font-size: 1.7rem; line-height: 1.25; margin: 0 0 0.5rem; min-height: 4.3rem; }
+.typed { color: #ccfbf1; border-bottom: 2px solid rgba(204, 251, 241, 0.6); }
+.caret { display: inline-block; width: 2px; height: 1.6rem; background: #ccfbf1; margin-left: 3px; vertical-align: middle; animation: blink 1s steps(1) infinite; }
+.route-art { width: 100%; max-width: 26rem; height: auto; display: block; margin: 0.5rem 0 1.5rem; }
+.benefits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.8rem; }
+.benefits li { display: flex; align-items: center; gap: 0.7rem; font-size: 1.05rem; opacity: 0; animation: rise-in 0.6s ease forwards; }
+.benefits .pi { background: rgba(255, 255, 255, 0.16); width: 2.1rem; height: 2.1rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.login-panel { display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+.login-card { width: 100%; max-width: 27rem; background: var(--tp-surface); border: 1px solid var(--tp-border); border-radius: 16px; padding: 1.75rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+.login-brand { display: none; color: var(--tp-primary); margin: 0 0 1rem; }
+.login-form { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.75rem; }
+.panel-enter { animation: panel-in 0.28s ease both; }
+.login-submit { width: 100%; margin-top: 0.25rem; }
+.live-region .form-message { margin-top: 0.75rem; }
+.evaluator-note { margin: 1.25rem 0 0; font-size: 0.8rem; text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Etiquetas flotantes */
+.float-field { position: relative; }
+.float-input { width: 100%; height: 3.4rem; padding: 1.35rem 0.9rem 0.4rem; font: inherit; color: var(--tp-text); background: #fff; border: 1px solid #94a3b8; border-radius: 10px; transition: border-color 0.18s, box-shadow 0.18s; }
+.has-toggle .float-input { padding-right: 3rem; }
+.float-input:focus { outline: none; border-color: var(--tp-primary); box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.3); }
+.float-input[aria-invalid="true"] { border-color: #b91c1c; }
+.float-label { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--tp-secondary); pointer-events: none; transition: all 0.16s ease; font-size: 1rem; }
+.float-input:focus + .float-label, .float-input:not(:placeholder-shown) + .float-label { top: 0.85rem; font-size: 0.72rem; font-weight: 600; color: var(--tp-primary-hover); }
+.toggle-pass { position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); width: 2.4rem; height: 2.4rem; border: 0; background: transparent; color: var(--tp-secondary); border-radius: 8px; cursor: pointer; }
+.toggle-pass:hover { background: var(--tp-bg); color: var(--tp-text); }
+.toggle-pass:focus-visible, .tab:focus-visible, .code-box:focus-visible { outline: 3px solid var(--tp-primary); outline-offset: 2px; }
+.caps-warning { color: var(--tp-sim-fg); background: var(--tp-sim-bg); padding: 0.3rem 0.6rem; border-radius: 8px; margin-top: -0.4rem; }
+
+/* Checklist y fortaleza */
+.pass-rules ul { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 0.75rem; font-size: 0.85rem; color: var(--tp-secondary); }
+.pass-rules li.ok { color: var(--tp-con-fg); font-weight: 600; }
+.pass-rules li span:first-child { display: inline-block; width: 1.1rem; }
+.strength { height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.strength span { display: block; height: 100%; transition: width 0.3s ease, background-color 0.3s; background: #b91c1c; }
+.strength-medium span { background: #b45309; }
+.strength-strong span { background: #15803d; }
+.strength-label { color: var(--tp-secondary); display: block; min-height: 1.1rem; margin-top: 0.2rem; }
+
+/* Codigo de 6 casillas */
+.code-help { margin: 0; }
+.code-boxes { display: flex; gap: 0.5rem; justify-content: space-between; }
+.code-box { width: 100%; max-width: 3.2rem; height: 3.6rem; text-align: center; font: inherit; font-size: 1.5rem; font-weight: 700; border: 1px solid #94a3b8; border-radius: 10px; background: #fff; color: var(--tp-text); transition: border-color 0.15s, box-shadow 0.15s; }
+.code-box:focus { outline: none; border-color: var(--tp-primary); box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.3); }
+
+/* Confirmacion */
+.confirmed { text-align: center; padding: 1.5rem 0; color: #166534; font-weight: 600; }
+.check-anim { width: 4.5rem; height: 4.5rem; }
+.check-circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: draw 0.6s ease forwards; }
+.check-mark { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.4s 0.5s ease forwards; }
+
+.shake { animation: shake 0.45s ease; }
+
+@keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes panel-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* Movil: la vitrina es una franja superior con titulo y ruta */
+@media (max-width: 768px) {
+  .login-page { grid-template-columns: minmax(0, 1fr); }
+  .showcase-inner { padding: 1rem 1rem 0.75rem; max-width: none; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .showcase-title { font-size: 1.3rem; margin: 0; }
+  .showcase-phrase, .benefits { display: none; }
+  .route-art { max-width: 9rem; margin: 0; }
+  .login-panel { padding: 1rem; align-items: flex-start; }
+  .login-card { padding: 1.25rem; }
+  .pass-rules ul { grid-template-columns: 1fr; }
+}
+
+/* Menos movimiento: ninguna animacion ni transicion */
+@media (prefers-reduced-motion: reduce) {
+  .login-page *, .login-page *::before, .login-page *::after { animation: none !important; transition: none !important; }
+  .benefits li { opacity: 1; }
+  .check-circle, .check-mark { stroke-dashoffset: 0; }
+}
+.login-page[data-reduced-motion="true"] *, .login-page[data-reduced-motion="true"] *::before { animation: none !important; transition: none !important; }
+.login-page[data-reduced-motion="true"] .benefits li { opacity: 1; }
+.login-page[data-reduced-motion="true"] .check-circle, .login-page[data-reduced-motion="true"] .check-mark { stroke-dashoffset: 0; }
+
+/* El avion recorre la ruta con CSS (offset-path); con movimiento reducido queda fijo a mitad de la ruta. */
+.plane-fly { offset-path: path("M 40 130 C 110 10, 270 10, 360 90"); offset-rotate: auto; animation: fly 7s linear infinite; }
+@keyframes fly { from { offset-distance: 0%; } to { offset-distance: 100%; } }

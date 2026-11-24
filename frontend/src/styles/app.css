@@ -279,3 +279,11 @@ a:hover { color: var(--tp-primary-hover); }
   .assistant-grid.pane-chat .assistant-canvas, .assistant-grid.pane-results .assistant-chat { display: none; }
   .chat { height: calc(100vh - 11rem); }
 }
+
+.quick-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; }
+.quick-hint { color: #115e59; font-size: 0.9rem; }
+.suggestion { white-space: normal; }
+
+/* Bloque "Continuar en el asistente" bajo las tarjetas de Vuelos y Clima (S6.2) */
+.continue-block { margin: 1rem 0; padding: 1rem 1.25rem; background: var(--tp-surface); border: 1px solid var(--tp-border); border-left: 4px solid var(--tp-primary); border-radius: 12px; }
+.continue-question { margin: 0 0 0.75rem; font-size: 1.05rem; font-weight: 600; color: var(--tp-text); }

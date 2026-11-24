@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { Button } from 'primereact/button'
 import { InputText } from 'primereact/inputtext'
 import { Panel } from 'primereact/panel'
@@ -10,6 +9,9 @@ import { useConversation } from '../agent/useConversation'
 import { WeatherCards } from '../agent/ui/Cards'
 import { ProgressLines } from '../agent/ui/ChatPanel'
 import { SafeMarkdown } from '../agent/ui/SafeMarkdown'
+import { ContinueBlock } from '../agent/ui/ContinueBlock'
+import { useContinueInAssistant } from '../agent/ui/useContinueInAssistant'
+import { continuePrompt } from '../agent/continuePrompt'
 import { CityAutocomplete } from '../components/CityAutocomplete'
 import { errorMessage } from '../app/hooks'
 import { addDays, formatDate, todayBogota } from '../utils/dates'
@@ -26,10 +28,13 @@ export function Weather() {
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const { requestContinue, dialog } = useContinueInAssistant(conv)
+  const [dismissed, setDismissed] = useState<number | null>(null)
   const [loadingTrip, setLoadingTrip] = useState(false)
   const today = todayBogota()
 
   const ask = (c: string, s: string, e: string) => {
+    setDismissed(null)
     conv.reset()
     void conv.send(composeWeatherQuery(c.trim(), s, e))
   }
@@ -69,6 +74,8 @@ export function Weather() {
     }
   }
 
+  const prompt = continuePrompt(state)
+  const showContinue = prompt !== null && prompt.textId !== dismissed
   const weather = state.uiLatest.weather ? parseWeather(state.uiLatest.weather.data) : null
   const fullText = state.items.filter((i) => i.kind === 'text').map((i) => (i.kind === 'text' ? i.text : '')).join('\n\n')
   const err = (k: string) => errors[k] && <small className="field-error" role="alert">{errors[k]}</small>
@@ -79,9 +86,7 @@ export function Weather() {
         <h1>Clima</h1>
         <div className="head-actions">
           <Button label="Clima de mi próximo viaje" icon="pi pi-sun" outlined onClick={nextTrip} loading={loadingTrip} disabled={state.running} />
-          <Link to="/asistente">
-            <Button label="Continuar en el asistente" icon="pi pi-comments" outlined />
-          </Link>
+          <Button label="Continuar en el asistente" icon="pi pi-comments" outlined onClick={requestContinue} />
         </div>
       </div>
       <form className="card form grid-form" onSubmit={submit} noValidate>
@@ -109,11 +114,13 @@ export function Weather() {
 
       <ProgressLines state={state} onRetry={() => void conv.retry()} />
       {weather && <WeatherCards weather={weather} />}
+      {showContinue && prompt && <ContinueBlock prompt={prompt} onContinue={requestContinue} onDiscard={() => setDismissed(prompt.textId)} />}
       {fullText && (
         <Panel header="Ver respuesta completa" toggleable collapsed className="mb">
           <SafeMarkdown text={fullText} />
         </Panel>
       )}
+      {dialog}
     </section>
   )
 }

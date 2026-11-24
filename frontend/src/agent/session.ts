@@ -11,6 +11,12 @@ export interface SessionPrep {
   rolled: boolean
 }
 
+export interface SessionSnapshot {
+  id: string | null
+  lastEventAt: number
+  hadActivity: boolean
+}
+
 export class SessionTracker {
   private id: string | null = null
   private lastEventAt = 0
@@ -35,6 +41,18 @@ export class SessionTracker {
       return { id: this.id, rolled: true }
     }
     return { id: this.id, rolled: false }
+  }
+
+  /** Copia del estado de la sesion (para transferirla a otra conversacion). */
+  snapshot(): SessionSnapshot {
+    return { id: this.id, lastEventAt: this.lastEventAt, hadActivity: this.hadActivity }
+  }
+
+  /** Adopta la misma sesion de AgentCore; la regla de 14 min se aplica en el siguiente prepare(). */
+  restore(s: SessionSnapshot): void {
+    this.id = s.id
+    this.lastEventAt = s.lastEventAt
+    this.hadActivity = s.hadActivity
   }
 
   /** Cada evento recibido renueva el reloj de inactividad. */

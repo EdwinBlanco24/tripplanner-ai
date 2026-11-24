@@ -4,6 +4,7 @@ import { AppProvider, useApp, type Services } from '../app/AppContext'
 import { TripFormDialog } from '../components/TripFormDialog'
 import { ReservationFormDialog } from '../components/ReservationFormDialog'
 import { Assistant } from '../pages/Assistant'
+import { Flights } from '../pages/Flights'
 import { createSimulatedStream } from './simulatedStream'
 import type { Trip } from '../types'
 
@@ -63,4 +64,20 @@ function AssistantAuto() {
     if (new URLSearchParams(location.search).has('auto')) void assistant.send('Busca vuelos de Bogotá a Cartagena el 4 de diciembre de 2026 por la mañana para 3 personas')
   }, [assistant])
   return <Assistant />
+}
+
+/** Solo desarrollo (/dev/flights): la pagina Vuelos con el stream simulado en modo "breve" (respuesta que termina en pregunta). */
+export function SandboxFlights() {
+  const services = useMemo(() => {
+    const noop = () => {}
+    const auth = { isSignedIn: () => true, hasStoredSession: () => false, subscribe: () => noop, email: 'dev@example.com', restore: async () => true }
+    return { auth, resources: {}, stream: createSimulatedStream(150, 'breve') } as unknown as Services
+  }, [])
+  return (
+    <AppProvider services={services}>
+      <main className="page">
+        <Flights />
+      </main>
+    </AppProvider>
+  )
 }

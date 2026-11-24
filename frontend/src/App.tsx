@@ -15,6 +15,7 @@ import { Voucher } from './pages/Voucher'
 // Solo en desarrollo: import.meta.env.DEV es false en el build y el chunk no se genera.
 const Sandbox = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.Sandbox }))) : null
 const SandboxAssistant = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxAssistant }))) : null
+const SandboxFlights = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxFlights }))) : null
 
 export function App() {
   return (
@@ -22,6 +23,9 @@ export function App() {
       <Route path="/login" element={<Login />} />
       {SandboxAssistant && (
         <Route path="/dev/assistant" element={<Suspense fallback={null}><SandboxAssistant /></Suspense>} />
+      )}
+      {SandboxFlights && (
+        <Route path="/dev/flights" element={<Suspense fallback={null}><SandboxFlights /></Suspense>} />
       )}
       {Sandbox && (
         <Route path="/dev/sandbox" element={<Suspense fallback={null}><Sandbox /></Suspense>} />

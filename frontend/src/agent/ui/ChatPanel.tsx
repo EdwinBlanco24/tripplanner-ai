@@ -5,7 +5,7 @@ import type { ChatItem, ConversationState } from '../reducer'
 import { SafeMarkdown } from './SafeMarkdown'
 
 export const SUGGESTIONS = [
-  'Vacaciones de 4 días en Cartagena desde Bogotá, 3 personas, 5 millones de pesos',
+  'Quiero organizar unas vacaciones de cuatro días en Cartagena. Salgo desde Bogotá, viajo con dos personas más y tengo un presupuesto de 5 millones de pesos. Quiero conocer el clima, encontrar vuelos y organizar algunas actividades turísticas',
   '¿Qué clima hará en mi próximo viaje?',
   'Muéstrame mis reservas',
 ]

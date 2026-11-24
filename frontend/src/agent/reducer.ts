@@ -47,6 +47,8 @@ export type ConversationAction =
   | { type: 'failed'; message: string }
   | { type: 'finish' }
   | { type: 'reset' }
+  /** Sustituye el estado completo (transferencia desde Vuelos/Clima). */
+  | { type: 'replace'; state: ConversationState }
 
 function markDone(items: ChatItem[]): ChatItem[] {
   return items.some((i) => i.kind === 'status' && !i.done) ? items.map((i) => (i.kind === 'status' && !i.done ? { ...i, done: true } : i)) : items
@@ -56,6 +58,15 @@ type NewItem = ChatItem extends infer T ? (T extends { id: number } ? Omit<T, 'i
 
 function push(state: ConversationState, item: NewItem, patch: Partial<ConversationState> = {}): ConversationState {
   return { ...state, ...patch, items: [...state.items, { ...item, id: state.nextId } as ChatItem], nextId: state.nextId + 1 }
+}
+
+/** Datos vacios (null, undefined, texto en blanco, lista u objeto sin nada): el componente no aporta nada y se ignora. */
+export function isEmptyData(data: unknown): boolean {
+  if (data === null || data === undefined) return true
+  if (typeof data === 'string') return data.trim() === ''
+  if (Array.isArray(data)) return data.length === 0
+  if (typeof data === 'object') return Object.keys(data as object).length === 0
+  return false
 }
 
 export function reduce(state: ConversationState, action: ConversationAction): ConversationState {
@@ -74,6 +85,8 @@ export function reduce(state: ConversationState, action: ConversationAction): Co
       return { ...state, items: markDone(state.items), running: false, textOpen: false }
     case 'reset':
       return initialConversation
+    case 'replace':
+      return { ...action.state, items: markDone(action.state.items), running: false, textOpen: false }
     case 'event': {
       const ev = action.event
       const base = { ...state, items: markDone(state.items) }
@@ -91,6 +104,7 @@ export function reduce(state: ConversationState, action: ConversationAction): Co
         case 'status':
           return push(base, { kind: 'status', agent: ev.agent, message: ev.message, done: false }, { textOpen: false })
         case 'ui': {
+          if (isEmptyData(ev.data)) return base // sin datos: no cambia lo ya mostrado ni activa pestanas
           const entry: UiEntry = { seq: state.uiSeq + 1, component: ev.component, data: ev.data }
           return {
             ...base,

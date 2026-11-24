@@ -5,6 +5,9 @@ import { FlightCards, GenericCard, ItineraryView, ReservationsList, TripCard, Tr
 
 export type TabId = 'flights' | 'weather' | 'trip' | 'itinerary' | 'reservations' | 'other'
 
+/** true solo en desarrollo: ahi los componentes desconocidos se ven en "Otros"; en produccion se ignoran. */
+export const SHOW_UNKNOWN = import.meta.env.DEV
+
 export const TABS: { id: TabId; label: string }[] = [
   { id: 'flights', label: 'Vuelos' },
   { id: 'weather', label: 'Clima' },
@@ -14,7 +17,11 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: 'other', label: 'Otros' },
 ]
 
-export function tabOf(component: string): TabId {
+/** Componentes internos que se guardan en el estado pero no crean pestana (tendran su propia tarjeta mas adelante). */
+const INTERNAL = new Set(['preferences'])
+
+/** Pestana de un componente, o null si no crea ninguna (interno, o desconocido fuera de desarrollo). */
+export function tabOf(component: string, showUnknown: boolean = SHOW_UNKNOWN): TabId | null {
   switch (component) {
     case 'flights':
     case 'weather':
@@ -25,14 +32,14 @@ export function tabOf(component: string): TabId {
     case 'trips':
       return 'trip'
     default:
-      return 'other'
+      return INTERNAL.has(component) || !showUnknown ? null : 'other'
   }
 }
 
 /** Mayor seq de la pestana (0 = sin datos). Para "trip" cuenta trip y trips. */
-export function tabSeq(state: ConversationState, tab: TabId): number {
+export function tabSeq(state: ConversationState, tab: TabId, showUnknown: boolean = SHOW_UNKNOWN): number {
   let best = 0
-  for (const e of state.uiHistory) if (tabOf(e.component) === tab && e.seq > best) best = e.seq
+  for (const e of state.uiHistory) if (tabOf(e.component, showUnknown) === tab && e.seq > best) best = e.seq
   return best
 }
 
@@ -90,15 +97,21 @@ interface Props {
 
 /** Lienzo: pestanas desactivadas sin datos; la que recibe datos nuevos se activa sola y muestra un punto si no esta activa. */
 export function Canvas({ state, onReserve, only, onNewData }: Props) {
-  const tabs = useMemo(() => TABS.filter((t) => !only || only.includes(t.id)), [only])
+  const tabs = useMemo(() => TABS.filter((t) => (!only || only.includes(t.id)) && (t.id !== 'other' || SHOW_UNKNOWN)), [only])
   const [active, setActive] = useState<TabId>(tabs[0].id)
   const [seen, setSeen] = useState<Record<string, number>>({})
 
-  const newest = state.uiHistory[state.uiHistory.length - 1]
+  // Solo cuentan los componentes que crean pestana (los internos o desconocidos no activan nada).
+  const newest = [...state.uiHistory].reverse().find((e) => tabOf(e.component) !== null)
+  const lastEntry = state.uiHistory[state.uiHistory.length - 1]
+  useEffect(() => {
+    if (lastEntry && tabOf(lastEntry.component) === null && import.meta.env.DEV) console.debug('[canvas] componente sin pestana ignorado:', lastEntry.component)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEntry?.seq])
   useEffect(() => {
     if (!newest) return
     const tab = tabOf(newest.component)
-    if (tabs.some((t) => t.id === tab)) {
+    if (tab && tabs.some((t) => t.id === tab)) {
       setActive(tab)
       onNewData?.()
     }

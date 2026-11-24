@@ -16,3 +16,4 @@ parallel = true
 capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 confirm_changeset = false
+parameter_overrides = "AllowedOrigins=http://localhost:5173,https://d2d27liabon15k.cloudfront.net"

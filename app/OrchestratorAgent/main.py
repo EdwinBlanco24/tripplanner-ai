@@ -4,7 +4,7 @@ import logging
 import os
 import queue
 import re
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
 import httpx
@@ -140,10 +140,43 @@ def build_specialist_tools(emit_ui) -> list:
     return [ask_flights, ask_weather]
 
 
-def get_current_date() -> str:
-    """Obtiene la fecha actual del sistema en formato YYYY-MM-DD."""
+# Colombia no tiene horario de verano: UTC-5 fijo (no depende de tzdata en el runtime).
+BOGOTA = timezone(timedelta(hours=-5), "America/Bogota")
+WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+FORECAST_DAYS = 16  # el pronóstico cubre hoy y los 15 días siguientes
+DEFAULT_TRIP_DAYS = 4
+MIN_LEAD_DAYS = 7
 
-    return datetime.now().date().isoformat()
+
+def today_bogota(now: datetime | None = None) -> date:
+    """Fecha de hoy en America/Bogota (el runtime corre en UTC: a las 20:00 de Bogotá ya es mañana allí)."""
+
+    return (now or datetime.now(timezone.utc)).astimezone(BOGOTA).date()
+
+
+def get_current_date(now: datetime | None = None) -> str:
+    """Fecha actual en Bogotá como "YYYY-MM-DD (día de la semana)"; el día lo calcula el código, no el modelo."""
+
+    today = today_bogota(now)
+    return f"{today.isoformat()} ({WEEKDAYS_ES[today.weekday()]})"
+
+
+def suggest_trip_window(today: date, days: int = DEFAULT_TRIP_DAYS) -> tuple[date, date]:
+    """Inicio = el jueves más próximo que esté a >= 7 días de hoy; fin = inicio + (días - 1)."""
+
+    earliest = today + timedelta(days=MIN_LEAD_DAYS)
+    start = earliest + timedelta(days=(3 - earliest.weekday()) % 7)  # 3 = jueves
+    return start, start + timedelta(days=days - 1)
+
+
+def describe_window(today: date, days: int = DEFAULT_TRIP_DAYS) -> str:
+    start, end = suggest_trip_window(today, days)
+    inside = end <= today + timedelta(days=FORECAST_DAYS - 1)
+    text = (
+        f"del {WEEKDAYS_ES[start.weekday()]} {start.isoformat()} al {WEEKDAYS_ES[end.weekday()]} {end.isoformat()} "
+        f"({days} días)"
+    )
+    return text if inside else text + "; OJO: queda fuera del pronóstico, avísalo y ofrece lo que sí hay"
 
 
 def create_memory_session_manager(
@@ -190,7 +223,7 @@ def create_memory_session_manager(
 SYSTEM_PROMPT = """
 Eres un planificador de viajes y coordinador de especialistas mediante A2A.
 
-La fecha actual del sistema es: {current_date}
+La fecha actual del sistema (hora de Bogotá) es: {current_date}
 
 Reglas obligatorias para las fechas:
 
@@ -228,6 +261,23 @@ Días de la semana: al presentar clima o itinerarios usa SIEMPRE el campo weekda
 de los datos; nunca calcules el día de la semana. Si weekday no viene, no
 nombres el día de la semana y muestra solo la fecha.
 
+Planificación sin fechas:
+
+- Si el usuario no da fechas, NO preguntes primero: propón fechas concretas. El
+  sistema ya calculó la propuesta por defecto (4 días): {trip_window}. Si pidió
+  otra duración, el inicio es el mismo jueves y el fin es inicio + (días - 1).
+  Las fechas deben quedar dentro de los 16 días del pronóstico (hoy + 15).
+- Dilo explícitamente, por ejemplo "Propongo del jueves X al domingo Y; puedes
+  cambiarlas", y en el MISMO turno llama a ask_flights (solo ida, origen a
+  destino, con el número de viajeros) y a ask_weather (destino completo
+  "Ciudad, País" y esas fechas).
+- "Viajo con dos personas más" = 3 viajeros. Si dice "millones de pesos", el
+  presupuesto está en COP (5 millones = 5000000).
+- Si pide actividades turísticas, menciona brevemente 3 o 4 ideas acordes al
+  clima y ofrece crear el viaje y generar el itinerario.
+- NO crees el viaje (create_trip) hasta que el usuario lo pida. Mantén las
+  reglas de formato breve con interfaz.
+
 Formato de respuesta con interfaz:
 
 - Si en este turno se mostró al usuario algún componente (flights, weather,
@@ -241,6 +291,8 @@ Formato de respuesta con interfaz:
   modifiques algo.
 - Usa tablas Markdown solo si el usuario pide explícitamente una comparación y
   no hay componente que la muestre; máximo 4 columnas y cabeceras cortas.
+- No uses emojis de banderas (algunos sistemas los muestran como letras, p. ej.
+  "BR" o "CO"); escribe el nombre del país.
 - Mantén todas las reglas anteriores (weekday de los datos, "Ciudad, País",
   confirmaciones de borrado, reservas SIMULADA, sin datos de tarjeta, UNCERTAIN).
 
@@ -286,14 +338,17 @@ def build_agent(
     emit_ui=None,
 ) -> Agent:
     """Agente por petición. `user_id` (del JWT) queda capturado en las tools de negocio."""
-    current_date = get_current_date()
+    now = datetime.now(timezone.utc)
+    current_date = get_current_date(now)
+    trip_window = describe_window(today_bogota(now))
     if emit_ui is None:
         emit_ui = lambda component, data: None  # noqa: E731
 
     return Agent(
         name="Trip Planner Orchestrator",
         system_prompt=SYSTEM_PROMPT.format(
-            current_date=current_date
+            current_date=current_date,
+            trip_window=trip_window,
         ),
         tools=[
             *build_specialist_tools(emit_ui),
