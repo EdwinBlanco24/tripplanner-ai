@@ -1,0 +1,11 @@
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; font-size: 12pt; }
+  .no-print, .p-toast, .p-dialog-mask, .shell-header { display: none !important; }
+  .page { max-width: none; padding: 0; }
+  .card { border: 0; padding: 0; break-inside: avoid; }
+  .day-col, .details-row { break-inside: avoid; }
+  .voucher-sheet { max-width: none; }
+  a { color: inherit; text-decoration: none; }
+  .status-tag, .notice, .chip { border: 1px solid currentColor; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

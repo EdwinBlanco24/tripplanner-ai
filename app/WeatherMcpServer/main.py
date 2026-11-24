@@ -7,6 +7,7 @@ AWS_IAM (SigV4): la hace el servicio antes de llegar aquí.
 Tools:
   get_forecast(city, start_date, end_date, country_code?)  pronóstico diario (hasta 16 días, dentro del horizonte)
   get_current_weather(city, country_code?)                 temperatura actual y condición
+  city admite "Ciudad", "Ciudad, País" o "Ciudad, Región, País" (S4.3)
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import unicodedata
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
@@ -29,6 +31,7 @@ FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 HTTP_TIMEOUT_SECONDS = 10
 MAX_RANGE_DAYS = 16          # Open-Meteo entrega hasta 16 días de pronóstico
 MAX_CITY_LENGTH = 100
+GEOCODE_COUNT = 10           # candidatos que se piden al geocodificador para elegir el del país indicado
 
 # AgentCore exige el puerto 8000; MCP_PORT existe solo para ejecutar el servidor en local sin chocar con otro.
 mcp = FastMCP("WeatherMcpServer", host="0.0.0.0", port=int(os.environ.get("MCP_PORT", "8000")), stateless_http=True)
@@ -108,18 +111,83 @@ async def _get_json(client: httpx.AsyncClient, url: str, params: dict) -> dict:
     return data
 
 
+def _norm(text) -> str:
+    """Minúsculas, sin tildes y con espacios simples: para comparar nombres de país y región."""
+    if not isinstance(text, str):
+        return ""
+    plain = unicodedata.normalize("NFD", text)
+    plain = "".join(ch for ch in plain if not unicodedata.combining(ch))
+    return " ".join(plain.lower().split())
+
+
+def parse_place(value: str) -> tuple[str, str | None, str | None]:
+    """Separa "Ciudad", "Ciudad, País" o "Ciudad, Región, País" por la ÚLTIMA coma.
+
+    Devuelve (ciudad, región, país); región y país son None si no vienen. Con una sola coma la parte final es el país.
+    """
+    city = _clean_city(value)
+    parts = [p.strip() for p in city.split(",")]
+    if len(parts) == 1 or not parts[-1]:
+        return parts[0], None, None
+    country = parts[-1]
+    rest = [p for p in parts[:-1] if p]
+    if not rest:
+        raise ValueError("city es obligatorio.")
+    region = ", ".join(rest[1:]) or None
+    return rest[0], region, country
+
+
+def _country_matches(result: dict, wanted: str) -> bool:
+    w = _norm(wanted)
+    code = result.get("country_code")
+    return w == _norm(result.get("country")) or (isinstance(code, str) and w == code.lower())
+
+
+def _pick(results: list, country: str | None, region: str | None) -> dict | None:
+    """Primer resultado del país indicado (con la región como desempate); sin país, el primero."""
+    if not country:
+        return results[0] if results else None
+    candidates = [r for r in results if _country_matches(r, country)]
+    if not candidates and _COUNTRY_RE.fullmatch(country) and not any(r.get("country_code") for r in results):
+        candidates = list(results)  # ISO2: la consulta ya iba filtrada por countryCode
+    if region and len(candidates) > 1:
+        wanted = _norm(region)
+        for r in candidates:
+            if wanted and wanted in _norm(r.get("admin1")):
+                return r
+    return candidates[0] if candidates else None
+
+
+def _location(result: dict) -> dict:
+    return {
+        "name": result.get("name"), "country": result.get("country"), "admin1": result.get("admin1"),
+        "lat": result.get("latitude"), "lon": result.get("longitude"),
+    }
+
+
 async def geocode(client: httpx.AsyncClient, city: str, country_code: str | None = None) -> dict:
-    params = {"name": _clean_city(city), "count": 1, "language": "es", "format": "json"}
-    if country_code:
+    name, region, country = parse_place(city)
+    if country is None and country_code:
         if not _COUNTRY_RE.fullmatch(country_code):
             raise ValueError("country_code debe ser un código ISO de 2 letras (p. ej. CO).")
-        params["countryCode"] = country_code.upper()
-    data = await _get_json(client, GEOCODING_URL, params)
-    results = data.get("results") or []
-    if not results:
-        raise ValueError(f"No se encontró la ciudad «{city.strip()[:60]}». Prueba con otro nombre o añade country_code.")
-    top = results[0]
-    return {"name": top.get("name"), "country": top.get("country"), "lat": top.get("latitude"), "lon": top.get("longitude")}
+        country = country_code
+    params = {"name": name, "count": GEOCODE_COUNT, "language": "es", "format": "json"}
+    if country and _COUNTRY_RE.fullmatch(country):
+        params["countryCode"] = country.upper()
+    results = (await _get_json(client, GEOCODING_URL, params)).get("results") or []
+    top = _pick(results, country, region)
+    if top is None and country and not _COUNTRY_RE.fullmatch(country):
+        # El país puede venir en inglés (la búsqueda devuelve los nombres en español): se reintenta en inglés y,
+        # si hay coincidencia, se usa la misma ciudad (por id) de los resultados en español.
+        in_english = (await _get_json(client, GEOCODING_URL, {**params, "language": "en"})).get("results") or []
+        match = _pick(in_english, country, region)
+        if match is not None:
+            top = next((r for r in results if r.get("id") is not None and r.get("id") == match.get("id")), match)
+    if top is None:
+        if country:
+            raise ValueError(f"No encontré {name[:60]} en {country[:60]}.")
+        raise ValueError(f"No se encontró la ciudad «{name[:60]}». Prueba con otro nombre o añade el país (Ciudad, País).")
+    return _location(top)
 
 
 def _number(value):
@@ -187,7 +255,7 @@ async def get_forecast(city: str, start_date: str, end_date: str, country_code: 
 
     Devuelve la ubicación encontrada y, por día: date, tempMax y tempMin (°C), rainProbability (%) y condition (español).
     Args:
-        city: Nombre de la ciudad (p. ej. Cartagena).
+        city: Ciudad, "Ciudad, País" o "Ciudad, Región, País" (p. ej. "Cartagena, Colombia"). El país puede ir en español, inglés o ISO2.
         start_date: Primer día, YYYY-MM-DD (hoy o futuro).
         end_date: Último día, YYYY-MM-DD (rango máximo de 16 días).
         country_code: Código ISO de 2 letras para desambiguar ciudades homónimas (p. ej. CO).
@@ -203,8 +271,8 @@ async def get_current_weather(city: str, country_code: str | None = None) -> dic
     """Temperatura actual, sensación térmica, humedad, viento y condición de una ciudad.
 
     Args:
-        city: Nombre de la ciudad (p. ej. Cartagena).
-        country_code: Código ISO de 2 letras para desambiguar ciudades homónimas (p. ej. CO).
+        city: Ciudad, "Ciudad, País" o "Ciudad, Región, País" (p. ej. "Cartagena, España").
+        country_code: Código ISO de 2 letras para desambiguar ciudades homónimas (p. ej. CO); se ignora si city ya trae el país.
     """
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT_SECONDS) as client:
         result = await current_weather(client, city, country_code)

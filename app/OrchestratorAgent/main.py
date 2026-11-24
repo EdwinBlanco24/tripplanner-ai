@@ -213,6 +213,8 @@ Cuando el usuario solicite información sobre vuelos:
 
 Cuando el usuario solicite información sobre clima:
 - Utiliza ask_weather.
+- Si el clima es de un viaje guardado, pasa al especialista el destino
+  COMPLETO tal como está guardado ("Ciudad, País"), sin recortarlo.
 
 Si la solicitud requiere vuelos y clima:
 - Utiliza ambos especialistas.
@@ -227,6 +229,8 @@ Gestión de viajes, itinerarios y reservas (tools de negocio):
 - Cuando el usuario quiera crear o guardar un viaje, usa create_trip con
   título, origen, destino, fechas YYYY-MM-DD, número de viajeros, presupuesto y
   moneda (COP por defecto). Si falta algún dato obligatorio, pídelo antes.
+  Guarda origin y destination como "Ciudad, País" con el país en español (p. ej.
+  "Cartagena, Colombia"), también al actualizar un viaje con update_trip.
 - Para armar el itinerario por días usa create_itinerary (o update_itinerary si
   ya existe), teniendo en cuenta el clima consultado con ask_weather cuando
   esté disponible. Las fechas de los días deben estar dentro del viaje.

@@ -1,0 +1,42 @@
+:root {
+  --tp-primary: #0f766e;
+  --tp-primary-hover: #115e59;
+  --tp-bg: #f6f7f9;
+  --tp-surface: #ffffff;
+  --tp-border: #e2e8f0;
+  --tp-text: #0f172a;
+  --tp-secondary: #475569;
+
+  --tp-sim-fg: #92400e;
+  --tp-sim-bg: #fef3c7;
+  --tp-pen-fg: #1e40af;
+  --tp-pen-bg: #dbeafe;
+  --tp-con-fg: #166534;
+  --tp-con-bg: #dcfce7;
+
+  --tp-font: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --tp-font-title: 'Space Grotesk Variable', 'Space Grotesk', 'Inter Variable', system-ui, sans-serif;
+
+  /* Tema PrimeReact (lara-light-teal) ajustado al primario */
+  --primary-color: var(--tp-primary);
+  --primary-color-text: #ffffff;
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #0f766e;
+  --primary-600: #115e59;
+  --primary-700: #134e4a;
+  --primary-800: #115e59;
+  --primary-900: #0f3d3a;
+  --highlight-bg: #ccfbf1;
+  --highlight-text-color: #134e4a;
+  --focus-ring: 0 0 0 0.2rem rgba(15, 118, 110, 0.35);
+  --text-color: var(--tp-text);
+  --text-color-secondary: var(--tp-secondary);
+  --surface-ground: var(--tp-bg);
+  --surface-card: var(--tp-surface);
+  --surface-border: var(--tp-border);
+  --font-family: var(--tp-font);
+}

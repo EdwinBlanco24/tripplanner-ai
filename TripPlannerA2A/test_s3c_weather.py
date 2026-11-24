@@ -100,7 +100,7 @@ class ServerLogicTests(unittest.TestCase):
             async with fake_open_meteo(calls=calls) as client:
                 return await self.srv.forecast(client, " Cartagena ", "2026-11-26", "2026-11-28", "co", today=TODAY)
         out = asyncio.run(run())
-        self.assertEqual(out["location"], {"name": "Cartagena de Indias", "country": "Colombia", "lat": 10.39817, "lon": -75.49328})
+        self.assertEqual(out["location"], {"name": "Cartagena de Indias", "country": "Colombia", "admin1": None, "lat": 10.39817, "lon": -75.49328})
         self.assertEqual(len(out["days"]), 3)
         geocode_params = dict(calls[0].url.params)
         self.assertEqual(geocode_params["name"], "Cartagena")

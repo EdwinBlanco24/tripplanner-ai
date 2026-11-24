@@ -1,0 +1,38 @@
+import { lazy, Suspense } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { ProtectedRoute } from './auth/ProtectedRoute'
+import { Shell } from './components/Shell'
+import { Dashboard } from './pages/Dashboard'
+import { Login } from './pages/Login'
+import { Placeholder } from './pages/Placeholder'
+import { Reservations } from './pages/Reservations'
+import { TripDetail } from './pages/TripDetail'
+import { Trips } from './pages/Trips'
+import { Voucher } from './pages/Voucher'
+
+// Solo en desarrollo: import.meta.env.DEV es false en el build y el chunk no se genera.
+const Sandbox = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.Sandbox }))) : null
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      {Sandbox && (
+        <Route path="/dev/sandbox" element={<Suspense fallback={null}><Sandbox /></Suspense>} />
+      )}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Shell />}>
+          <Route index element={<Dashboard />} />
+          <Route path="asistente" element={<Placeholder title="Asistente" />} />
+          <Route path="vuelos" element={<Placeholder title="Vuelos" />} />
+          <Route path="clima" element={<Placeholder title="Clima" />} />
+          <Route path="viajes" element={<Trips />} />
+          <Route path="viajes/:tripId" element={<TripDetail />} />
+          <Route path="reservas" element={<Reservations />} />
+          <Route path="reservas/:tripId/:resId/comprobante" element={<Voucher />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}

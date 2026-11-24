@@ -84,6 +84,20 @@ def main() -> int:
             data = weather_blocks.parse_tool_result(res)
             print(json.dumps(data, ensure_ascii=False, indent=1))
 
+            # S4.3: "Ciudad, Pais" desambigua ciudades homonimas (Cartagena de Colombia vs. de Espana).
+            places = {}
+            for i, place in enumerate(("Cartagena, Colombia", "Cartagena, España", "Cartagena, Spain")):
+                r = client.call_tool_sync(f"p{i}", "get_forecast", {"city": place, "start_date": (today + timedelta(days=3)).isoformat(),
+                                                                    "end_date": (today + timedelta(days=5)).isoformat()})
+                loc = (weather_blocks.parse_tool_result(r) or {}).get("location") or {}
+                places[place] = loc
+                print(f"\n{place!r} -> status={r.get('status')} location={json.dumps(loc, ensure_ascii=False)}")
+            co, es = places["Cartagena, Colombia"], places["Cartagena, España"]
+            distinct = bool(co and es) and abs((co.get("lat") or 0) - 10.4) < 1 and abs((es.get("lat") or 0) - 37.6) < 1
+            print("coordenadas distintas (lat ~10.4 vs ~37.6):", "OK" if distinct else "FALLO")
+            nomatch = client.call_tool_sync("p9", "get_current_weather", {"city": "Cartagena, Japón"}, read_timeout_seconds=timedelta(seconds=30))
+            print("pais sin coincidencia -> status:", nomatch.get("status"), "|", (nomatch.get("content") or [{}])[0].get("text"))
+
             res2 = client.call_tool_sync("t2", "get_current_weather", {"city": "Cartagena", "country_code": "CO"})
             print("\nget_current_weather status:", res2.get("status"))
             print(json.dumps(weather_blocks.parse_tool_result(res2), ensure_ascii=False, indent=1))
@@ -97,7 +111,7 @@ def main() -> int:
 
         block = weather_blocks.build_weather_block(weather_blocks.normalize_forecast(data))
         print("\nBloque que anexaria WeatherAgent:" + block)
-        return 0 if res.get("status") == "success" and res2.get("status") == "success" else 2
+        return 0 if res.get("status") == "success" and res2.get("status") == "success" and distinct else 2
     finally:
         proc.terminate()
         try:
