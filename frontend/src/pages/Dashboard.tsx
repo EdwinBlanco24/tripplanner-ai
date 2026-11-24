@@ -4,6 +4,7 @@ import { Button } from 'primereact/button'
 import { Skeleton } from 'primereact/skeleton'
 import { useApp } from '../app/AppContext'
 import { useLoad } from '../app/hooks'
+import { BudgetPanel } from '../components/BudgetPanel'
 import { EmptyState } from '../components/EmptyState'
 import { StatusTag } from '../components/StatusTag'
 import { WeatherDay } from '../components/WeatherDay'
@@ -138,6 +139,7 @@ function NextTripCard({ data }: { data: DashData }) {
       <p>
         Presupuesto: <strong>{formatMoney(trip.budget, trip.currency)}</strong>
       </p>
+      <BudgetPanel trip={trip} reservations={reservations} compact />
       <p>
         Reservas:{' '}
         {totals.length === 0 ? (

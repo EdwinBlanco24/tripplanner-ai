@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from 'primereact/button'
+import { BudgetPanel } from '../../components/BudgetPanel'
 import { RouteText } from '../../components/PlaceText'
 import { StatusTag } from '../../components/StatusTag'
 import { WeatherDay } from '../../components/WeatherDay'
@@ -101,7 +102,7 @@ export function WeatherCards({ weather }: { weather: WeatherData }) {
   )
 }
 
-export function TripCard({ trip }: { trip: Trip }) {
+export function TripCard({ trip, reservations }: { trip: Trip; reservations?: Reservation[] }) {
   return (
     <article className="card result-card">
       <h3 className="trip-title">{trip.title}</h3>
@@ -115,6 +116,7 @@ export function TripCard({ trip }: { trip: Trip }) {
       <p className="muted">
         <code>{trip.tripId}</code>
       </p>
+      {reservations && <BudgetPanel trip={trip} reservations={reservations} compact />}
       <div className="result-actions">
         <Link to={`/viajes/${encodeURIComponent(trip.tripId)}`}>
           <Button label="Ver viaje" icon="pi pi-arrow-right" size="small" />

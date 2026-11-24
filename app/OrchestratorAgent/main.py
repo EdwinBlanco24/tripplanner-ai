@@ -179,6 +179,32 @@ def describe_window(today: date, days: int = DEFAULT_TRIP_DAYS) -> str:
     return text if inside else text + "; OJO: queda fuera del pronóstico, avísalo y ofrece lo que sí hay"
 
 
+def reference_usd_cop(environ=None) -> str | None:
+    """Tasa USD->COP de referencia (REFERENCE_USD_COP) como texto limpio, o None si falta o no es un numero positivo."""
+    env = os.environ if environ is None else environ
+    raw = str(env.get("REFERENCE_USD_COP", "")).strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    if not (value > 0) or value == float("inf"):
+        return None
+    return str(int(value)) if value == int(value) else raw
+
+
+def exchange_rate_rule(rate: str | None) -> str:
+    """Texto de la regla de conversion USD->COP que se inserta en el prompt de cada peticion."""
+    if rate:
+        return (
+            f"Para convertir USD a COP usa SIEMPRE la tasa de referencia {rate} COP/USD "
+            "y di que es aproximada; no uses otra tasa."
+        )
+    return (
+        "No hay tasa de referencia configurada: NO conviertas entre USD y COP; "
+        "muestra cada monto en su moneda original y di que no puedes convertirlo."
+    )
+
+
 def create_memory_session_manager(
     session_id: str,
     actor_id: str,
@@ -278,6 +304,10 @@ Planificación sin fechas:
 - NO crees el viaje (create_trip) hasta que el usuario lo pida. Mantén las
   reglas de formato breve con interfaz.
 
+Tasa de cambio:
+
+- {rate_rule}
+
 Formato de respuesta con interfaz:
 
 - Si en este turno se mostró al usuario algún componente (flights, weather,
@@ -341,12 +371,14 @@ def build_agent(
     now = datetime.now(timezone.utc)
     current_date = get_current_date(now)
     trip_window = describe_window(today_bogota(now))
+    rate_rule = exchange_rate_rule(reference_usd_cop())
     if emit_ui is None:
         emit_ui = lambda component, data: None  # noqa: E731
 
     return Agent(
         name="Trip Planner Orchestrator",
         system_prompt=SYSTEM_PROMPT.format(
+            rate_rule=rate_rule,
             current_date=current_date,
             trip_window=trip_window,
         ),

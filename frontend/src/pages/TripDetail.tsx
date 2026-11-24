@@ -6,6 +6,7 @@ import { useApp } from '../app/AppContext'
 import { errorMessage, useLoad } from '../app/hooks'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { DayEditorDialog, sortItems } from '../components/DayEditorDialog'
+import { BudgetPanel } from '../components/BudgetPanel'
 import { EmptyState } from '../components/EmptyState'
 import { ReservationFormDialog } from '../components/ReservationFormDialog'
 import { ReservationRowActions } from '../components/ReservationRowActions'
@@ -17,6 +18,8 @@ import { eachDay, formatDate, formatDateLong } from '../utils/dates'
 import { formatMoney, totalsByCurrency } from '../utils/money'
 import { reservationSummary, TYPE_LABEL } from '../utils/trips'
 import { RouteText } from '../components/PlaceText'
+import { downloadTripPdf } from '../pdf/download'
+import { usePdfDownload } from '../pdf/usePdfDownload'
 
 export function TripDetail() {
   const { tripId = '' } = useParams()
@@ -30,6 +33,7 @@ export function TripDetail() {
   const [dayEdit, setDayEdit] = useState<ItineraryDay | null>(null)
   const [daySaving, setDaySaving] = useState(false)
   const [dayError, setDayError] = useState<string | null>(null)
+  const pdf = usePdfDownload()
 
   const removeTrip = async () => {
     if (busy) return
@@ -135,7 +139,7 @@ export function TripDetail() {
           <div className="head-actions no-print">
             <Button label="Editar" icon="pi pi-pencil" outlined onClick={() => setEditing(true)} />
             <Button label="Imprimir" icon="pi pi-print" outlined onClick={() => window.print()} />
-            <Button label="Descargar PDF" icon="pi pi-download" outlined onClick={() => window.print()} />
+            <Button label="Descargar PDF" icon="pi pi-download" outlined loading={pdf.busy} onClick={() => void pdf.run(() => downloadTripPdf({ trip, itinerary, reservations }))} />
             <Button label="Eliminar" icon="pi pi-trash" severity="danger" outlined onClick={() => setDeleting(true)} />
           </div>
         </div>
@@ -171,6 +175,11 @@ export function TripDetail() {
             </div>
           )}
         </dl>
+      </div>
+
+      <div className="card">
+        <h2>Presupuesto</h2>
+        <BudgetPanel trip={trip} reservations={reservations} />
       </div>
 
       <div className="card">

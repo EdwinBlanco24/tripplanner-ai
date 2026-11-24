@@ -61,7 +61,7 @@ class WindowTests(unittest.TestCase):
 
 class PromptTests(unittest.TestCase):
     def test_prompt_formats_with_both_values(self):
-        prompt = main.SYSTEM_PROMPT.format(current_date=main.get_current_date(utc(2026, 11, 24)), trip_window=main.describe_window(date(2026, 11, 24)))
+        prompt = main.SYSTEM_PROMPT.format(rate_rule="x", current_date=main.get_current_date(utc(2026, 11, 24)), trip_window=main.describe_window(date(2026, 11, 24)))
         flat = " ".join(prompt.split())
         self.assertIn("(hora de Bogotá) es: 2026-11-24 (martes)", flat)
         self.assertIn("del jueves 2026-12-03 al domingo 2026-12-06 (4 días)", flat)
@@ -93,7 +93,7 @@ class TestFlagEmojiRuleS62(unittest.TestCase):
     """S6.2: el prompt prohibe los emojis de banderas y conserva las reglas anteriores."""
 
     def setUp(self):
-        self.prompt = main.SYSTEM_PROMPT.format(current_date="2026-11-24 (martes)", trip_window="del jueves 2026-12-03 al domingo 2026-12-06 (4 días)")
+        self.prompt = main.SYSTEM_PROMPT.format(rate_rule="x", current_date="2026-11-24 (martes)", trip_window="del jueves 2026-12-03 al domingo 2026-12-06 (4 días)")
 
     def test_flag_rule_present(self):
         self.assertIn("No uses emojis de banderas", self.prompt)
@@ -102,6 +102,42 @@ class TestFlagEmojiRuleS62(unittest.TestCase):
     def test_previous_rules_kept(self):
         for text in ("Planificación sin fechas", "NO crees el viaje", "Formato de respuesta con interfaz", "SIMULADA", "UNCERTAIN", "2026-12-03"):
             self.assertIn(text, self.prompt)
+
+
+class TestReferenceRateOP12(unittest.TestCase):
+    """OP1-2: tasa de referencia USD/COP unica, tomada de REFERENCE_USD_COP."""
+
+    def test_reads_the_variable(self):
+        self.assertEqual(main.reference_usd_cop({"REFERENCE_USD_COP": "3300"}), "3300")
+        self.assertEqual(main.reference_usd_cop({"REFERENCE_USD_COP": " 3300.0 "}), "3300")
+        self.assertEqual(main.reference_usd_cop({"REFERENCE_USD_COP": "3812.5"}), "3812.5")
+
+    def test_missing_or_invalid_gives_none(self):
+        for env in ({}, {"REFERENCE_USD_COP": ""}, {"REFERENCE_USD_COP": "abc"}, {"REFERENCE_USD_COP": "0"}, {"REFERENCE_USD_COP": "-5"}, {"REFERENCE_USD_COP": "inf"}):
+            self.assertIsNone(main.reference_usd_cop(env), env)
+
+    def test_rule_with_rate(self):
+        rule = main.exchange_rate_rule("3300")
+        self.assertIn("SIEMPRE la tasa de referencia 3300 COP/USD", rule)
+        self.assertIn("aproximada", rule)
+        self.assertIn("no uses otra tasa", rule)
+
+    def test_rule_without_rate_does_not_convert(self):
+        rule = main.exchange_rate_rule(None)
+        self.assertIn("NO conviertas", rule)
+        self.assertNotIn("COP/USD", rule)
+
+    def test_prompt_contains_the_rule_and_formats(self):
+        prompt = main.SYSTEM_PROMPT.format(rate_rule=main.exchange_rate_rule("3300"), current_date="2026-11-24 (martes)", trip_window="x")
+        self.assertIn("Tasa de cambio:", prompt)
+        self.assertIn("3300 COP/USD", prompt)
+        self.assertIn("No uses emojis de banderas", prompt)  # conserva reglas anteriores
+
+    def test_deploy_config_declares_the_variable(self):
+        import json
+        cfg = json.load(open(os.path.join(HERE, "agentcore", "agentcore.json"), encoding="utf-8"))
+        orch = next(r for r in cfg["runtimes"] if r["name"] == "OrchestratorAgent")
+        self.assertIn({"name": "REFERENCE_USD_COP", "value": "3300"}, orch["envVars"])
 
 
 if __name__ == "__main__":

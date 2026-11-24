@@ -3,5 +3,11 @@
   "region": "us-east-2",
   "userPoolId": "us-east-2_hVc7JUyoG",
   "userPoolClientId": "27ri7q3j4etl4nm5ht6oki040r",
-  "orchestratorRuntimeArn": "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_OrchestratorAgent-j62sZ9EWux"
+  "orchestratorRuntimeArn": "arn:aws:bedrock-agentcore:us-east-2:458934380591:runtime/TripPlannerA2A_OrchestratorAgent-j62sZ9EWux",
+  "exchangeRates": {
+    "base": "COP",
+    "USD": 3300,
+    "asOf": "2026-11-24",
+    "label": "Tasa de referencia aproximada (TRM nov. 2026)"
+  }
 }

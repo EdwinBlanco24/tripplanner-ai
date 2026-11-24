@@ -13,6 +13,8 @@ import { formatDate, formatDateLong } from '../utils/dates'
 import { formatMoney } from '../utils/money'
 import { reservationDate, TYPE_LABEL } from '../utils/trips'
 import { RouteText } from '../components/PlaceText'
+import { downloadVoucherPdf } from '../pdf/download'
+import { usePdfDownload } from '../pdf/usePdfDownload'
 
 export function dayForReservation(r: Reservation, days: ItineraryDay[] | undefined): ItineraryDay | null {
   if (!days) return null
@@ -27,6 +29,7 @@ export function Voucher() {
   const { data, loading, error } = useLoad<TripDetailResponse>(() => resources.getTrip(tripId), [resources, tripId])
   const reservation = data?.reservations.find((r) => r.resId === resId) ?? null
   const autoPrint = params.get('print') === '1'
+  const pdf = usePdfDownload()
 
   useEffect(() => {
     if (!autoPrint || !reservation) return
@@ -57,7 +60,7 @@ export function Voucher() {
           <Button label="Volver" icon="pi pi-arrow-left" text />
         </Link>
         <Button label="Imprimir" icon="pi pi-print" outlined onClick={() => window.print()} />
-        <Button label="Descargar PDF" icon="pi pi-download" onClick={() => window.print()} />
+        <Button label="Descargar PDF" icon="pi pi-download" loading={pdf.busy} onClick={() => void pdf.run(() => downloadVoucherPdf({ trip, reservation, day }))} />
       </div>
 
       <article className="card voucher-sheet">

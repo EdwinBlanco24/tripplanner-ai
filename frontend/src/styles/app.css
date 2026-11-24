@@ -287,3 +287,23 @@ a:hover { color: var(--tp-primary-hover); }
 /* Bloque "Continuar en el asistente" bajo las tarjetas de Vuelos y Clima (S6.2) */
 .continue-block { margin: 1rem 0; padding: 1rem 1.25rem; background: var(--tp-surface); border: 1px solid var(--tp-border); border-left: 4px solid var(--tp-primary); border-radius: 12px; }
 .continue-question { margin: 0 0 0.75rem; font-size: 1.05rem; font-weight: 600; color: var(--tp-text); }
+
+/* Comparador de presupuesto (OP2). Verde #15803D, ambar #B45309, rojo #B91C1C; el estado tambien va en texto e icono. */
+.budget { --bd-color: #15803d; }
+.budget-warning { --bd-color: #b45309; }
+.budget-over { --bd-color: #b91c1c; }
+.budget-bar-row { display: flex; align-items: center; gap: 0.75rem; }
+.budget-bar { flex: 1; height: 0.75rem; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.budget-fill { display: block; height: 100%; background: var(--bd-color); border-radius: 999px; transition: width 0.4s ease; }
+.budget-pct { color: var(--bd-color); min-width: 3.2rem; text-align: right; }
+.budget-state { margin: 0.35rem 0 0.6rem; color: var(--bd-color); font-weight: 600; font-size: 0.9rem; }
+.budget-figures { display: flex; gap: 2rem; flex-wrap: wrap; margin: 0 0 0.5rem; }
+.budget-figures dt { font-size: 0.8rem; color: var(--tp-secondary); }
+.budget-figures dd { margin: 0; font-size: 1.15rem; font-weight: 700; }
+.budget-types { list-style: none; padding: 0; margin: 0.5rem 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.budget-types li { display: grid; grid-template-columns: 1.5rem 1fr auto auto; gap: 0.6rem; align-items: center; }
+.budget-over-msg { color: #b91c1c; font-weight: 600; }
+.budget-warn { background: var(--tp-sim-bg); color: var(--tp-sim-fg); padding: 0.4rem 0.7rem; border-radius: 8px; font-size: 0.9rem; }
+.budget-rate { font-size: 0.8rem; margin: 0.5rem 0 0; }
+.budget-compact .budget-line { margin: 0; }
+@media (max-width: 640px) { .budget-types li { grid-template-columns: 1.5rem 1fr auto; } .budget-type-orig { display: none; } }

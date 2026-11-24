@@ -351,7 +351,7 @@ class PromptRulesTests(unittest.TestCase):
             self.assertIn(field, prompt)
         self.assertIn("price y currency", prompt)
         self.assertIn("tarjeta", prompt)
-        prompt.format(current_date="2026-11-22", trip_window="del jueves 2026-12-03 al domingo 2026-12-06 (4 días)")  # el prompt se formatea con str.format: no puede traer llaves sueltas
+        prompt.format(rate_rule="x", current_date="2026-11-22", trip_window="del jueves 2026-12-03 al domingo 2026-12-06 (4 días)")  # el prompt se formatea con str.format: no puede traer llaves sueltas
 
 
 class UiEmissionTests(BusinessToolsBase):

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { Reservation } from '../../types'
 import type { ConversationState, UiEntry } from '../reducer'
 import { parseFlights, parseItinerary, parseReservations, parseTrip, parseTrips, parseWeather, type Flight } from '../uiData'
 import { FlightCards, GenericCard, ItineraryView, ReservationsList, TripCard, TripCards, WeatherCards } from './Cards'
@@ -43,6 +44,13 @@ export function tabSeq(state: ConversationState, tab: TabId, showUnknown: boolea
   return best
 }
 
+/** Reservas completas de un viaje, solo si la conversacion las listo (una creacion o cambio suelto no es la lista entera). */
+export function reservationsForTrip(state: ConversationState, tripId: string): Reservation[] | undefined {
+  const r = state.uiLatest.reservations ? parseReservations(state.uiLatest.reservations.data) : null
+  if (!r || r.change !== 'listed') return undefined
+  return r.reservations.filter((x) => x.tripId === tripId)
+}
+
 function renderTab(tab: TabId, state: ConversationState, onReserve?: (f: Flight) => void, busy?: boolean) {
   const latest = state.uiLatest
   switch (tab) {
@@ -63,7 +71,7 @@ function renderTab(tab: TabId, state: ConversationState, onReserve?: (f: Flight)
         return list ? <TripCards trips={list} /> : null
       }
       const one = trip ? parseTrip(trip.data) : null
-      return one ? <TripCard trip={one.trip} /> : null
+      return one ? <TripCard trip={one.trip} reservations={reservationsForTrip(state, one.trip.tripId)} /> : null
     }
     case 'itinerary': {
       const it = latest.itinerary ? parseItinerary(latest.itinerary.data) : null
