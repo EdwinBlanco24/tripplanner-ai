@@ -174,9 +174,9 @@ class LambdaEventTests(BusinessToolsBase):
         self.assertEqual(self.fake.events()[1]["payload"], {"tripId": TRIP["tripId"], "notes": ""})
 
     def test_preferences_are_translated_to_camel_case(self):
-        self.call("update_preferences", preferred_departure_window="MORNING", budget_style="ECONOMY", interests=["playa"])
+        self.call("update_preferences", travel_styles=["BEACH"], pace="RELAXED", flight_time="MORNING", budget_level="ECONOMY", notes="x")
         self.assertEqual(self.fake.events()[0]["payload"],
-                         {"preferredDepartureWindow": "MORNING", "budgetStyle": "ECONOMY", "interests": ["playa"]})
+                         {"travelStyles": ["BEACH"], "pace": "RELAXED", "flightTime": "MORNING", "budgetLevel": "ECONOMY", "notes": "x"})
 
     def test_all_fifteen_actions_exist_and_use_the_canonical_names(self):
         calls = {
@@ -189,7 +189,7 @@ class LambdaEventTests(BusinessToolsBase):
             "get_reservations": {}, "get_reservation": dict(trip_id="TRP-0123abcd", res_id="RES-89abcdef"),
             "update_reservation": dict(trip_id="TRP-0123abcd", res_id="RES-89abcdef", status="PENDIENTE"),
             "delete_reservation": dict(trip_id="TRP-0123abcd", res_id="RES-89abcdef", confirmed=True),
-            "get_preferences": {}, "update_preferences": dict(dietary="x"),
+            "get_preferences": {}, "update_preferences": dict(notes="x"),
         }
         self.assertEqual(set(calls), set(self.tools))
         for name, kwargs in calls.items():
@@ -282,7 +282,7 @@ WRITE_CALLS = {
     "update_itinerary": dict(trip_id="TRP-0123abcd", days=[]),
     "create_reservation": dict(trip_id="TRP-0123abcd", type="FLIGHT", provider="p", details={}, price=1),
     "update_reservation": dict(trip_id="TRP-0123abcd", res_id="RES-89abcdef", status="PENDIENTE"),
-    "update_preferences": dict(dietary="x"),
+    "update_preferences": dict(notes="x"),
 }
 UNCERTAIN_MESSAGE = "La operación pudo haberse completado; consulta antes de reintentar"
 
@@ -368,7 +368,7 @@ class UiEmissionTests(BusinessToolsBase):
         self.call("update_reservation", trip_id="TRP-0123abcd", res_id="RES-89abcdef", status="PENDIENTE")
         self.call("delete_reservation", trip_id="TRP-0123abcd", res_id="RES-89abcdef", confirmed=True)
         self.call("get_preferences")
-        self.call("update_preferences", dietary="x")
+        self.call("update_preferences", notes="x")
         self.call("delete_trip", trip_id="TRP-0123abcd", confirmed=True)
         self.assertEqual([c for c, _ in self.ui], [
             "trip", "trip", "trip", "trips", "itinerary", "itinerary", "itinerary",

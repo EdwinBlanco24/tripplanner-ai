@@ -4,6 +4,7 @@ import { composeReserveMessage, lastTripId } from '../agent/messages'
 import { useConversation } from '../agent/useConversation'
 import { ChatPanel } from '../agent/ui/ChatPanel'
 import { Canvas } from '../agent/ui/Canvas'
+import { PreferencesStrip } from '../agent/ui/PreferencesStrip'
 import { QuickActions } from '../agent/ui/QuickActions'
 import type { Flight } from '../agent/uiData'
 
@@ -44,6 +45,7 @@ export function Assistant() {
           <ChatPanel state={state} onSend={(t) => void assistant.send(t)} onStop={assistant.stop} onReset={assistant.reset} onRetry={() => void assistant.retry()} />
         </div>
         <div className="assistant-canvas">
+          <PreferencesStrip state={state} />
           <QuickActions state={state} onSend={(t) => void assistant.send(t)} />
           <Canvas state={state} onReserve={reserve} onNewData={() => setNewResults(true)} />
         </div>

@@ -292,20 +292,48 @@ class ReservationTests(unittest.TestCase):
 
 
 class PreferencesTests(unittest.TestCase):
-    def test_valid(self):
-        body = {"preferredDepartureWindow": "MORNING", "budgetStyle": "BALANCED", "interests": ["playa", " café "], "dietary": "vegetariano"}
-        out = v.validate_preferences(body)
-        self.assertEqual(out["interests"], ["playa", "café"])
+    FULL = {"travelStyles": ["CULTURE", "GASTRONOMY"], "pace": "RELAXED", "flightTime": "MORNING", "budgetLevel": "STANDARD", "notes": " Prefiero hoteles tranquilos "}
+
+    def test_valid_full(self):
+        out = v.validate_preferences(self.FULL)
+        self.assertEqual(out, {**self.FULL, "notes": "Prefiero hoteles tranquilos"})
+
+    def test_every_enum_value_is_accepted(self):
+        for style in v.TRAVEL_STYLES:
+            self.assertEqual(v.validate_preferences({"travelStyles": [style]}), {"travelStyles": [style]})
+        for name, values in (("pace", v.PACES), ("flightTime", v.FLIGHT_TIMES), ("budgetLevel", v.BUDGET_LEVELS)):
+            for value in values:
+                self.assertEqual(v.validate_preferences({name: value}), {name: value})
+
+    def test_styles_list_limits(self):
+        self.assertEqual(v.validate_preferences({"travelStyles": []}), {"travelStyles": []})
+        self.assertEqual(len(v.validate_preferences({"travelStyles": list(v.TRAVEL_STYLES)})["travelStyles"]), 6)
+        self.assertEqual(v.validate_preferences({"travelStyles": ["BEACH", "BEACH"]}), {"travelStyles": ["BEACH"]})
+        with self.assertRaises(ValidationError):
+            v.validate_preferences({"travelStyles": list(v.TRAVEL_STYLES) + ["BEACH"]})  # 7 elementos
 
     def test_invalid(self):
-        for body in ({"preferredDepartureWindow": "DAWN"}, {"budgetStyle": "cheap"}, {"interests": ["x"] * 11},
-                     {"interests": ["y" * 41]}, {"dietary": "z" * 101}, {"other": 1}, []):
+        for body in ({"travelStyles": ["SPA"]}, {"travelStyles": "BEACH"}, {"travelStyles": [1]}, {"pace": "FAST"}, {"pace": "relaxed"},
+                     {"flightTime": "NIGHT"}, {"budgetLevel": "BALANCED"}, {"budgetLevel": 3}, {"notes": "z" * 201}, {"notes": 5},
+                     {"notes": "a\x00b"}, {"other": 1}, {"interests": ["playa"]}, {"dietary": "vegano"}, {"budgetStyle": "ECONOMY"}, []):
             with self.subTest(body=body):
                 with self.assertRaises(ValidationError):
                     v.validate_preferences(body)
 
+    def test_notes_limit_is_200_inclusive(self):
+        self.assertEqual(len(v.validate_preferences({"notes": "z" * 200})["notes"]), 200)
+
+    def test_payment_data_is_rejected(self):
+        for body in ({"cardNumber": "4111111111111111"}, {"notes": "mi tarjeta 4111 1111 1111 1111"}, {"notes": "4111-1111-1111-1111"}, {"cvv": "123"}):
+            with self.subTest(body=body):
+                with self.assertRaises(ValidationError):
+                    v.validate_preferences(body)
+        self.assertEqual(v.validate_preferences({"notes": "Viajo el 24-12-2026 con 3 maletas"})["notes"], "Viajo el 24-12-2026 con 3 maletas")
+
     def test_empty_body_is_a_valid_reset(self):
         self.assertEqual(v.validate_preferences({}), {})
+        self.assertEqual(v.validate_preferences({"notes": ""}), {})
+
 
 
 class FilterTests(unittest.TestCase):

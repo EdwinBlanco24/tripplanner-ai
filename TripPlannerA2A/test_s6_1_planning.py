@@ -140,5 +140,28 @@ class TestReferenceRateOP12(unittest.TestCase):
         self.assertIn({"name": "REFERENCE_USD_COP", "value": "3300"}, orch["envVars"])
 
 
+class TestPreferencesSectionOP3(unittest.TestCase):
+    """OP3: el prompt pide leer las preferencias una vez y aplicarlas, sin perder reglas anteriores."""
+
+    def setUp(self):
+        self.prompt = main.SYSTEM_PROMPT.format(rate_rule="x", current_date="2026-11-24 (martes)", trip_window="del jueves 2026-12-03 al domingo 2026-12-06 (4 días)")
+
+    def test_section_and_rules(self):
+        for text in ("Preferencias del usuario:", "get_preferences", "UNA sola vez por conversación", "RELAXED 2", "BALANCED 3", "INTENSE 4 a 5",
+                     "flightTime", "budgetLevel", "Como prefieres", "no inventes", "Mis preferencias", "NO consultes las preferencias",
+                     "prevalecen sobre lo recordado"):
+            self.assertIn(text, self.prompt)
+
+    def test_previous_rules_are_kept(self):
+        for text in ("Planificación sin fechas", "NO crees el viaje", "Formato de respuesta con interfaz", "Tasa de cambio:", "No uses emojis de banderas",
+                     "SIMULADA", "UNCERTAIN", "La fecha actual del sistema", "2026-12-03"):
+            self.assertIn(text, self.prompt)
+
+    def test_the_preferences_tool_exists_and_emits_the_ui_component(self):
+        import business_tools as bt
+        self.assertEqual(bt._lambda_ui("get_preferences", {}, {"preferences": None}), ("preferences", {"preferences": None}))
+        self.assertEqual(bt._lambda_ui("update_preferences", {}, {"preferences": {"pace": "RELAXED"}})[0], "preferences")
+
+
 if __name__ == "__main__":
     unittest.main()

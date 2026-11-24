@@ -25,11 +25,14 @@ Tabla única **`TripPlannerTable`** · DynamoDB on-demand · cifrado en reposo c
 | Atributo | Tipo | Notas |
 |---|---|---|
 | `entityType` | S | `PREFS` |
-| `preferredDepartureWindow` | S | `MORNING` \| `AFTERNOON` \| `NIGHT` \| `ANY` |
-| `budgetStyle` | S | `ECONOMY` \| `BALANCED` \| `PREMIUM` |
-| `interests` | L de S | Hasta 10 elementos, máx. 40 caracteres cada uno |
-| `dietary` | S | Máx. 100 |
+| `travelStyles` | L de S | 0 a 6 estilos distintos: `BEACH`, `CULTURE`, `GASTRONOMY`, `ADVENTURE`, `NIGHTLIFE`, `NATURE` |
+| `pace` | S | `RELAXED` \| `BALANCED` \| `INTENSE` |
+| `flightTime` | S | `ANY` \| `MORNING` \| `AFTERNOON` \| `EVENING` |
+| `budgetLevel` | S | `ECONOMY` \| `STANDARD` \| `PREMIUM` |
+| `notes` | S | Texto libre opcional, máx. 200; sin datos de pago |
 | `updatedAt` | S | |
+
+> OP3 reemplazó el esquema anterior (`preferredDepartureWindow`, `budgetStyle`, `interests`, `dietary`). Un ítem PREFS guardado con ese esquema sigue leyéndose tal cual (GET devuelve sus campos), pero el siguiente `PUT` lo reemplaza completo con el esquema nuevo; los campos antiguos ya no se aceptan (400).
 
 ### 1.3 Viaje — `SK=TRIP#<tripId>`
 

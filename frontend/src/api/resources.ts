@@ -12,6 +12,8 @@ import type {
 
 export function createResources(api: ApiClient) {
   return {
+    getPreferences: async (): Promise<unknown> => (await api.request<{ preferences: unknown }>('GET', '/preferences')).preferences,
+    savePreferences: async (body: Record<string, unknown>): Promise<unknown> => (await api.request<{ preferences: unknown }>('PUT', '/preferences', body)).preferences,
     listTrips: async (status?: TripStatus): Promise<Trip[]> =>
       (await api.request<{ trips: Trip[] }>('GET', `/trips${status ? `?status=${status}` : ''}`)).trips,
     createTrip: async (input: TripInput): Promise<Trip> => (await api.request<{ trip: Trip }>('POST', '/trips', input)).trip,

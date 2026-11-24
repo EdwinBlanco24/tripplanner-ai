@@ -7,6 +7,7 @@ import { ReservationFormDialog } from '../components/ReservationFormDialog'
 import { Assistant } from '../pages/Assistant'
 import { Flights } from '../pages/Flights'
 import { TripDetail } from '../pages/TripDetail'
+import { Preferences } from '../pages/Preferences'
 import { setConfig } from '../config/config'
 import { createSimulatedStream } from './simulatedStream'
 import type { Trip } from '../types'
@@ -106,6 +107,23 @@ export function SandboxTrip() {
         <Routes>
           <Route path=":tripId" element={<TripDetail />} />
         </Routes>
+      </main>
+    </AppProvider>
+  )
+}
+
+/** Solo desarrollo (/dev/preferences): Mis preferencias con datos de ejemplo (el guardado se simula). */
+export function SandboxPreferences() {
+  const services = useMemo(() => {
+    const noop = () => {}
+    const auth = { isSignedIn: () => true, hasStoredSession: () => false, subscribe: () => noop, email: 'dev@example.com', restore: async () => true }
+    const saved = { travelStyles: ['CULTURE', 'GASTRONOMY', 'NATURE'], pace: 'RELAXED', flightTime: 'MORNING', budgetLevel: 'STANDARD', notes: 'Prefiero hoteles tranquilos y vuelos sin escalas.' }
+    return { auth, resources: { getPreferences: async () => saved, savePreferences: async () => saved } } as unknown as Services
+  }, [])
+  return (
+    <AppProvider services={services}>
+      <main className="page">
+        <Preferences />
       </main>
     </AppProvider>
   )

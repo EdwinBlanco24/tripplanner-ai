@@ -11,6 +11,7 @@ const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login
 const Reservations = lazy(() => import('./pages/Reservations').then((m) => ({ default: m.Reservations })))
 const TripDetail = lazy(() => import('./pages/TripDetail').then((m) => ({ default: m.TripDetail })))
 const Trips = lazy(() => import('./pages/Trips').then((m) => ({ default: m.Trips })))
+const Preferences = lazy(() => import('./pages/Preferences').then((m) => ({ default: m.Preferences })))
 const Assistant = lazy(() => import('./pages/Assistant').then((m) => ({ default: m.Assistant })))
 const Flights = lazy(() => import('./pages/Flights').then((m) => ({ default: m.Flights })))
 const Weather = lazy(() => import('./pages/Weather').then((m) => ({ default: m.Weather })))
@@ -22,6 +23,7 @@ const Sandbox = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m
 const SandboxAssistant = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxAssistant }))) : null
 const SandboxFlights = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxFlights }))) : null
 const SandboxTrip = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxTrip }))) : null
+const SandboxPreferences = import.meta.env.DEV ? lazy(() => import('./dev/Sandbox').then((m) => ({ default: m.SandboxPreferences }))) : null
 
 export function App() {
   return (
@@ -29,6 +31,9 @@ export function App() {
       <Route path="/login" element={lazyPage(<Login />)} />
       {SandboxAssistant && (
         <Route path="/dev/assistant" element={<Suspense fallback={null}><SandboxAssistant /></Suspense>} />
+      )}
+      {SandboxPreferences && (
+        <Route path="/dev/preferences" element={<Suspense fallback={null}><SandboxPreferences /></Suspense>} />
       )}
       {SandboxTrip && (
         <Route path="/dev/trip/*" element={<Suspense fallback={null}><SandboxTrip /></Suspense>} />
@@ -43,6 +48,7 @@ export function App() {
         <Route element={<Shell />}>
           <Route index element={lazyPage(<Dashboard />)} />
           <Route path="asistente" element={lazyPage(<Assistant />)} />
+          <Route path="preferencias" element={lazyPage(<Preferences />)} />
           <Route path="vuelos" element={lazyPage(<Flights />)} />
           <Route path="clima" element={lazyPage(<Weather />)} />
           <Route path="viajes" element={lazyPage(<Trips />)} />

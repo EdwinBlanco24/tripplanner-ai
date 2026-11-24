@@ -51,7 +51,7 @@ HTTP API de API Gateway con **autorizador JWT de Cognito**. Base: `https://<api-
 | `provider` | texto 1–80 |
 | `details` | objeto con las claves permitidas por tipo (ver `02-modelo-datos.md`), valores texto ≤ 200 salvo `bookingUrl` (≤ 2048 caracteres, debe empezar por `https://` y no llevar espacios), tamaño total ≤ 4 KB |
 | itinerario | 1–30 días; fechas únicas dentro de `[startDate, endDate]` del viaje; ≤ 30 ítems por día; `time` `HH:MM`; `title` ≤ 120; `location` ≤ 120; `notes` ≤ 500; `type` ∈ `flight, hotel, activity, meal, transfer, other`; `rainProbability` 0–100 |
-| preferencias | `preferredDepartureWindow` ∈ `MORNING, AFTERNOON, NIGHT, ANY`; `budgetStyle` ∈ `ECONOMY, BALANCED, PREMIUM`; `interests` ≤ 10 textos de ≤ 40; `dietary` ≤ 100 |
+| preferencias | `travelStyles` lista de 0 a 6 ∈ `BEACH, CULTURE, GASTRONOMY, ADVENTURE, NIGHTLIFE, NATURE` (sin repetidos); `pace` ∈ `RELAXED, BALANCED, INTENSE`; `flightTime` ∈ `ANY, MORNING, AFTERNOON, EVENING`; `budgetLevel` ∈ `ECONOMY, STANDARD, PREMIUM`; `notes` ≤ 200 (rechaza claves de tarjeta y cualquier texto que parezca un número de tarjeta) |
 
 Reglas de actualización: en `PUT` las validaciones de fecha futura solo se aplican a los campos que **cambian** (así un viaje en curso puede editar sus notas). Los campos desconocidos se rechazan con 400. Los campos de solo lectura (`tripId`, `resId`, `createdBy`, `createdAt`, `updatedAt`) se ignoran si llegan.
 
@@ -82,13 +82,13 @@ La columna **Lambda** indica la función que atiende la ruta.
 **`GET /preferences`** → `200`
 
 ```json
-{ "preferences": { "preferredDepartureWindow": "MORNING", "budgetStyle": "BALANCED", "interests": ["playa", "gastronomía"], "dietary": "vegetariano", "updatedAt": "2026-11-22T15:04:05Z" } }
+{ "preferences": { "travelStyles": ["CULTURE", "GASTRONOMY"], "pace": "RELAXED", "flightTime": "MORNING", "budgetLevel": "STANDARD", "notes": "Prefiero hoteles tranquilos", "updatedAt": "2026-11-22T15:04:05Z" } }
 ```
 
 Si nunca se guardaron, devuelve `200` con `{"preferences": null}`.
 Errores: 401, 500.
 
-**`PUT /preferences`** — cuerpo: los cuatro campos de preferencias (todos opcionales; los omitidos se guardan vacíos, es un reemplazo). → `200` con el mismo formato.
+**`PUT /preferences`** — cuerpo: los cinco campos de preferencias `travelStyles`, `pace`, `flightTime`, `budgetLevel` y `notes` (todos opcionales; los omitidos se guardan vacíos, es un reemplazo). → `200` con el mismo formato.
 Errores: 400, 401, 500.
 
 ### 3.2 Viajes

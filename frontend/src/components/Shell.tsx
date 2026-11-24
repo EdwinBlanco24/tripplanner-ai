@@ -59,6 +59,16 @@ export function Shell() {
             {menu && (
               <div className="user-popup" role="menu">
                 <div className="muted user-email">{email}</div>
+                <Button
+                  label="Mis preferencias"
+                  icon="pi pi-sliders-h"
+                  text
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false)
+                    navigate('/preferencias')
+                  }}
+                />
                 <Button label="Cerrar sesión" icon="pi pi-sign-out" text severity="danger" onClick={logout} role="menuitem" />
               </div>
             )}

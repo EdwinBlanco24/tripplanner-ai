@@ -20,14 +20,17 @@ CURRENCIES = ("COP", "USD")
 RESERVATION_TYPES = ("FLIGHT", "HOTEL", "ACTIVITY")
 RESERVATION_STATUSES = ("SIMULADA", "PENDIENTE", "CONFIRMADA")
 ITEM_TYPES = ("flight", "hotel", "activity", "meal", "transfer", "other")
-DEPARTURE_WINDOWS = ("MORNING", "AFTERNOON", "NIGHT", "ANY")
-BUDGET_STYLES = ("ECONOMY", "BALANCED", "PREMIUM")
+TRAVEL_STYLES = ("BEACH", "CULTURE", "GASTRONOMY", "ADVENTURE", "NIGHTLIFE", "NATURE")
+PACES = ("RELAXED", "BALANCED", "INTENSE")
+FLIGHT_TIMES = ("ANY", "MORNING", "AFTERNOON", "EVENING")
+BUDGET_LEVELS = ("ECONOMY", "STANDARD", "PREMIUM")
 
 # --- Límites --------------------------------------------------------------------------------
 MAX_TRIP_DAYS = 90
 MAX_ITINERARY_DAYS = 30
 MAX_ITEMS_PER_DAY = 30
-MAX_INTERESTS = 10
+MAX_TRAVEL_STYLES = len(TRAVEL_STYLES)
+MAX_PREFERENCE_NOTES = 200
 MAX_DETAILS_BYTES = 4096
 MAX_DETAIL_VALUE = 200  # docs/03-api.md: valores de details <= 200, salvo bookingUrl
 MAX_BOOKING_URL = 2048  # los enlaces de reserva de proveedores como Kiwi superan los 200 caracteres
@@ -514,31 +517,39 @@ def validate_reservation_update(body, existing: dict) -> dict:
 
 
 # --- Preferencias -----------------------------------------------------------------------------
+PREFERENCE_KEYS = ("travelStyles", "pace", "flightTime", "budgetLevel", "notes")
+_CARD_LIKE = re.compile(r"(?:\d[ -]?){13,19}")
+
+
 def validate_preferences(body) -> dict:
+    """Esquema de preferencias (reemplazo completo; todos los campos son opcionales).
+
+    travelStyles: 0-6 estilos distintos; pace, flightTime y budgetLevel: enums; notes: texto libre <= 200
+    sin datos de pago (ni claves de tarjeta ni algo que parezca un numero de tarjeta).
+    """
     body = _object(body)
     reject_payment_fields(body)
     c = Collector()
-    _check_keys(c, body, ("preferredDepartureWindow", "budgetStyle", "interests", "dietary"))
+    _check_keys(c, body, PREFERENCE_KEYS)
     out: dict = {}
-    if body.get("preferredDepartureWindow") is not None:
-        value = _enum(c, "preferredDepartureWindow", body["preferredDepartureWindow"], DEPARTURE_WINDOWS)
-        if value is not _BAD:
-            out["preferredDepartureWindow"] = value
-    if body.get("budgetStyle") is not None:
-        value = _enum(c, "budgetStyle", body["budgetStyle"], BUDGET_STYLES)
-        if value is not _BAD:
-            out["budgetStyle"] = value
-    interests = body.get("interests")
-    if interests is not None:
-        if not isinstance(interests, list) or len(interests) > MAX_INTERESTS:
-            c.add("interests", "invalid_length", f"interests debe ser una lista de hasta {MAX_INTERESTS} textos.")
+    styles = body.get("travelStyles")
+    if styles is not None:
+        if not isinstance(styles, list) or len(styles) > MAX_TRAVEL_STYLES:
+            c.add("travelStyles", "invalid_length", f"travelStyles debe ser una lista de hasta {MAX_TRAVEL_STYLES} estilos.")
         else:
-            cleaned = [_text(c, f"interests[{i}]", x, max_len=40) for i, x in enumerate(interests)]
+            cleaned = [_enum(c, f"travelStyles[{i}]", x, TRAVEL_STYLES) for i, x in enumerate(styles)]
             if all(x is not _BAD for x in cleaned):
-                out["interests"] = cleaned
-    if body.get("dietary") not in (None, ""):
-        value = _text(c, "dietary", body["dietary"], max_len=100)
-        if value is not _BAD:
-            out["dietary"] = value
+                out["travelStyles"] = list(dict.fromkeys(cleaned))  # sin repetidos, conserva el orden
+    for name, allowed in (("pace", PACES), ("flightTime", FLIGHT_TIMES), ("budgetLevel", BUDGET_LEVELS)):
+        if body.get(name) is not None:
+            value = _enum(c, name, body[name], allowed)
+            if value is not _BAD:
+                out[name] = value
+    if body.get("notes") not in (None, ""):
+        value = _text(c, "notes", body["notes"], max_len=MAX_PREFERENCE_NOTES)
+        if value is not _BAD and _CARD_LIKE.search(value):
+            c.add("notes", "payment_data_not_allowed", "No se aceptan datos de tarjetas ni de pago.")
+        elif value is not _BAD:
+            out["notes"] = value
     c.raise_if_any()
     return out

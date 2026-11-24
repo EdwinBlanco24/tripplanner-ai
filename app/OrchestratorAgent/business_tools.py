@@ -458,25 +458,26 @@ def build_business_tools(user_id: str | None, emit_ui: Callable[[str, Any], None
     # ------------------------------------------------------------------ preferencias
     @tool
     def get_preferences() -> str:
-        """Obtiene las preferencias guardadas del usuario (horario de salida, estilo de presupuesto, intereses, dieta)."""
+        """Obtiene las preferencias guardadas del usuario: estilos de viaje, ritmo, horario de vuelo, nivel de presupuesto y notas."""
         return run("preferences", "get_preferences", {})
 
     @tool
     def update_preferences(
-        preferred_departure_window: str | None = None, budget_style: str | None = None,
-        interests: list[str] | None = None, dietary: str | None = None,
+        travel_styles: list[str] | None = None, pace: str | None = None, flight_time: str | None = None,
+        budget_level: str | None = None, notes: str | None = None,
     ) -> str:
         """Guarda las preferencias del usuario. REEMPLAZA todas: incluye también las que ya tenía y quiere conservar.
 
         Args:
-            preferred_departure_window: MORNING, AFTERNOON, NIGHT o ANY.
-            budget_style: ECONOMY, BALANCED o PREMIUM.
-            interests: Hasta 10 intereses de hasta 40 caracteres cada uno.
-            dietary: Restricciones o preferencias de alimentación (hasta 100 caracteres).
+            travel_styles: Hasta 6 de BEACH, CULTURE, GASTRONOMY, ADVENTURE, NIGHTLIFE, NATURE.
+            pace: RELAXED, BALANCED o INTENSE.
+            flight_time: ANY, MORNING, AFTERNOON o EVENING.
+            budget_level: ECONOMY, STANDARD o PREMIUM.
+            notes: Texto libre de hasta 200 caracteres (nunca datos de tarjeta).
         """
         return run("preferences", "update_preferences", {
-            "preferredDepartureWindow": preferred_departure_window, "budgetStyle": budget_style,
-            "interests": interests, "dietary": dietary,
+            "travelStyles": travel_styles, "pace": pace, "flightTime": flight_time,
+            "budgetLevel": budget_level, "notes": notes,
         })
 
     return [

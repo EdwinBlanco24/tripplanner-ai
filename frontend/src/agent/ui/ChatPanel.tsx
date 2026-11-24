@@ -8,6 +8,7 @@ export const SUGGESTIONS = [
   'Quiero organizar unas vacaciones de cuatro días en Cartagena. Salgo desde Bogotá, viajo con dos personas más y tengo un presupuesto de 5 millones de pesos. Quiero conocer el clima, encontrar vuelos y organizar algunas actividades turísticas',
   '¿Qué clima hará en mi próximo viaje?',
   'Muéstrame mis reservas',
+  'Recomiéndame actividades según mis preferencias',
 ]
 
 const AGENT_LABEL: Record<string, string> = { flights: 'Vuelos', weather: 'Clima', business: 'Viajes', orchestrator: 'Asistente' }

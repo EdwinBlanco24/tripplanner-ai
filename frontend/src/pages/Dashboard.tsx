@@ -7,6 +7,7 @@ import { useLoad } from '../app/hooks'
 import { BudgetPanel } from '../components/BudgetPanel'
 import { EmptyState } from '../components/EmptyState'
 import { StatusTag } from '../components/StatusTag'
+import { parsePreferences } from '../utils/preferences'
 import { WeatherDay } from '../components/WeatherDay'
 import type { Reservation, Trip, TripDetailResponse } from '../types'
 import { formatDate, todayBogota } from '../utils/dates'
@@ -18,15 +19,21 @@ interface DashData {
   trips: Trip[]
   reservations: Reservation[]
   next: TripDetailResponse | null
+  /** true solo si se pudo leer y el usuario aun no tiene preferencias (si falla la lectura no se muestra la tarjeta). */
+  noPreferences: boolean
 }
 
 export function Dashboard() {
   const { resources, email } = useApp()
   const { data, loading, error, reload } = useLoad<DashData>(async () => {
-    const [trips, reservations] = await Promise.all([resources.listTrips(), resources.listReservations()])
+    const [trips, reservations, prefs] = await Promise.all([
+      resources.listTrips(),
+      resources.listReservations(),
+      resources.getPreferences().then((p) => ({ ok: true as const, p }), () => ({ ok: false as const, p: null })),
+    ])
     const nextTrip = selectNextTrip(trips, todayBogota())
     const next = nextTrip ? await resources.getTrip(nextTrip.tripId) : null
-    return { trips, reservations, next }
+    return { trips, reservations, next, noPreferences: prefs.ok && parsePreferences(prefs.p) === null }
   }, [resources])
 
   const tripTitle = useMemo(() => new Map((data?.trips ?? []).map((t) => [t.tripId, t.title])), [data])
@@ -64,6 +71,16 @@ export function Dashboard() {
             <NextTripCard data={data} />
             <SummaryCard data={data} />
           </div>
+
+          {data.noPreferences && (
+            <div className="card prefs-card">
+              <h2>Personaliza tus recomendaciones</h2>
+              <p className="muted">Cuéntanos qué estilo de viaje te gusta y el asistente ajustará actividades y vuelos.</p>
+              <Link to="/preferencias">
+                <Button label="Configurar preferencias" icon="pi pi-sliders-h" />
+              </Link>
+            </div>
+          )}
 
           <div className="card">
             <div className="card-head">

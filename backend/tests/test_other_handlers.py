@@ -172,30 +172,38 @@ class ReservationTests(support.BaseCase):
 
 
 class PreferencesTests(support.BaseCase):
+    BODY = {"travelStyles": ["CULTURE", "GASTRONOMY"], "pace": "RELAXED", "flightTime": "MORNING", "budgetLevel": "ECONOMY", "notes": "Sin escalas"}
+
     def test_get_defaults_to_null_then_put_and_get(self):
         self.assertEqual(body_of(self.preferences(api_event("GET /preferences"))), {"preferences": None})
-        body = {"preferredDepartureWindow": "MORNING", "budgetStyle": "BALANCED", "interests": ["playa"], "dietary": "vegano"}
-        put = self.preferences(api_event("PUT /preferences", body=body))
+        put = self.preferences(api_event("PUT /preferences", body=self.BODY))
         self.assertEqual(put["statusCode"], 200)
         prefs = body_of(self.preferences(api_event("GET /preferences")))["preferences"]
-        self.assertEqual(prefs["interests"], ["playa"])
+        self.assertEqual({k: prefs[k] for k in self.BODY}, self.BODY)
         self.assertEqual(prefs["updatedAt"], "2026-11-22T15:00:00Z")
         self.assertNotIn("PK", prefs)
 
     def test_put_replaces_everything(self):
-        self.preferences(api_event("PUT /preferences", body={"dietary": "vegano", "budgetStyle": "PREMIUM"}))
-        self.preferences(api_event("PUT /preferences", body={"budgetStyle": "ECONOMY"}))
+        self.preferences(api_event("PUT /preferences", body={"notes": "vegano", "budgetLevel": "PREMIUM"}))
+        self.preferences(api_event("PUT /preferences", body={"budgetLevel": "ECONOMY"}))
         prefs = body_of(self.preferences(api_event("GET /preferences")))["preferences"]
-        self.assertEqual(prefs["budgetStyle"], "ECONOMY")
-        self.assertNotIn("dietary", prefs)
+        self.assertEqual(prefs["budgetLevel"], "ECONOMY")
+        self.assertNotIn("notes", prefs)
 
-    def test_validation_isolation_and_agent(self):
-        self.assertEqual(self.preferences(api_event("PUT /preferences", body={"budgetStyle": "x"}))["statusCode"], 400)
-        self.preferences(api_event("PUT /preferences", body={"dietary": "vegano"}))
+    def test_http_rejections(self):
+        for body in ({"pace": "FAST"}, {"travelStyles": ["BEACH"] * 3 + ["CULTURE", "NATURE", "ADVENTURE", "NIGHTLIFE"]}, {"notes": "x" * 201},
+                     {"unknown": 1}, {"cardNumber": "4111111111111111"}):
+            with self.subTest(body=body):
+                self.assertEqual(self.preferences(api_event("PUT /preferences", body=body))["statusCode"], 400)
+
+    def test_isolation_and_agent(self):
+        self.preferences(api_event("PUT /preferences", body={"notes": "vegano"}))
         self.assertEqual(body_of(self.preferences(api_event("GET /preferences", sub=USER_B)))["preferences"], None)
-        agent = self.preferences(agent_event("update_preferences", {"dietary": "sin gluten"}, user_id=USER_B))
+        agent = self.preferences(agent_event("update_preferences", {"pace": "INTENSE", "notes": "sin gluten"}, user_id=USER_B))
         self.assertTrue(agent["ok"])
-        self.assertEqual(self.preferences(agent_event("get_preferences", {}, user_id=USER_B))["data"]["preferences"]["dietary"], "sin gluten")
+        got = self.preferences(agent_event("get_preferences", {}, user_id=USER_B))["data"]["preferences"]
+        self.assertEqual((got["pace"], got["notes"]), ("INTENSE", "sin gluten"))
+
 
 
 if __name__ == "__main__":
