@@ -112,6 +112,24 @@ export function TripDetail() {
         <div className="page-head">
           <div>
             <h1>{trip.title}</h1>
+            <div className="trip-id-row">
+              <code className="trip-id" aria-label="ID del viaje">{trip.tripId}</code>
+              <Button
+                icon="pi pi-copy"
+                text
+                rounded
+                size="small"
+                className="no-print"
+                aria-label="Copiar ID del viaje"
+                tooltip="Copiar ID"
+                onClick={() => {
+                  navigator.clipboard
+                    ?.writeText(trip.tripId)
+                    .then(() => notify('success', 'ID copiado.'))
+                    .catch(() => notify('warn', 'No se pudo copiar el ID.'))
+                }}
+              />
+            </div>
             {trip.createdBy === 'assistant' && <span className="chip">Creado por el asistente</span>}
           </div>
           <div className="head-actions no-print">

@@ -22,7 +22,7 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[]): Loadable<
   const [tick, setTick] = useState(0)
   const loaderRef = useRef(loader)
   loaderRef.current = loader
-  const { notify } = useApp()
+  const { notify, dataVersion } = useApp()
 
   useEffect(() => {
     let cancelled = false
@@ -46,7 +46,7 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[]): Loadable<
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, ...deps])
+  }, [tick, dataVersion, ...deps])
 
   const reload = useCallback(() => setTick((t) => t + 1), [])
   return { data, loading, error, reload }

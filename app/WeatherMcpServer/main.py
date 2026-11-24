@@ -190,6 +190,19 @@ async def geocode(client: httpx.AsyncClient, city: str, country_code: str | None
     return _location(top)
 
 
+WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+
+
+def weekday_es(day: str | None) -> str | None:
+    """Día de la semana en español (minúsculas) de una fecha YYYY-MM-DD, calculado con datetime.date (sin zonas)."""
+    if not isinstance(day, str) or not _DATE_RE.fullmatch(day[:10]):
+        return None
+    try:
+        return WEEKDAYS_ES[date.fromisoformat(day[:10]).weekday()]
+    except ValueError:
+        return None
+
+
 def _number(value):
     return round(value, 1) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
@@ -204,6 +217,7 @@ def build_days(daily: dict) -> list[dict]:
         rain = at("precipitation_probability_max")
         days.append({
             "date": day,
+            "weekday": weekday_es(day),
             "tempMax": _number(at("temperature_2m_max")),
             "tempMin": _number(at("temperature_2m_min")),
             "rainProbability": int(rain) if isinstance(rain, (int, float)) and not isinstance(rain, bool) else None,
@@ -240,6 +254,8 @@ async def current_weather(client: httpx.AsyncClient, city: str, country_code: st
         "location": location,
         "current": {
             "time": current.get("time"),
+            # El instante viene en la zona de la ciudad (timezone=auto): su fecha local da el día de la semana de hoy allí.
+            "weekday": weekday_es(current.get("time")),
             "temperature": _number(current.get("temperature_2m")),
             "apparentTemperature": _number(current.get("apparent_temperature")),
             "humidity": current.get("relative_humidity_2m"),

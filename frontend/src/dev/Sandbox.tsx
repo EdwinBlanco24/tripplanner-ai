@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from 'primereact/button'
-import { AppProvider, type Services } from '../app/AppContext'
+import { AppProvider, useApp, type Services } from '../app/AppContext'
 import { TripFormDialog } from '../components/TripFormDialog'
 import { ReservationFormDialog } from '../components/ReservationFormDialog'
+import { Assistant } from '../pages/Assistant'
+import { createSimulatedStream } from './simulatedStream'
 import type { Trip } from '../types'
 
 /** Solo desarrollo (ruta /dev/sandbox): formularios con servicios simulados, sin sesion ni API. */
@@ -37,4 +39,28 @@ export function Sandbox() {
       </div>
     </AppProvider>
   )
+}
+
+/** Solo desarrollo (/dev/assistant): el Asistente con un stream simulado desde los fixtures. ?auto=1 envia un mensaje al abrir. */
+export function SandboxAssistant() {
+  const services = useMemo(() => {
+    const noop = () => {}
+    const auth = { isSignedIn: () => true, hasStoredSession: () => false, subscribe: () => noop, email: 'dev@example.com', restore: async () => true }
+    return { auth, resources: {}, stream: createSimulatedStream(150, (new URLSearchParams(location.search).get('mode') as 'tabla' | 'breve' | null) ?? 'normal') } as unknown as Services
+  }, [])
+  return (
+    <AppProvider services={services}>
+      <main className="page">
+        <AssistantAuto />
+      </main>
+    </AppProvider>
+  )
+}
+
+function AssistantAuto() {
+  const { assistant } = useApp()
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('auto')) void assistant.send('Busca vuelos de Bogotá a Cartagena el 4 de diciembre de 2026 por la mañana para 3 personas')
+  }, [assistant])
+  return <Assistant />
 }

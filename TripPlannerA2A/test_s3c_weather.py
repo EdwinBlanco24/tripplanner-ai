@@ -86,7 +86,7 @@ class ServerLogicTests(unittest.TestCase):
 
     def test_build_days_tolerates_missing_values(self):
         days = self.srv.build_days(FORECAST_OK["daily"])
-        self.assertEqual(days[0], {"date": "2026-11-26", "tempMax": 32.1, "tempMin": 27.7, "rainProbability": 92, "condition": "Llovizna moderada"})
+        self.assertEqual(days[0], {"date": "2026-11-26", "weekday": "jueves", "tempMax": 32.1, "tempMin": 27.7, "rainProbability": 92, "condition": "Llovizna moderada"})
         self.assertEqual(days[1]["rainProbability"], 75)
         self.assertIsNone(days[2]["tempMax"])
         self.assertIsNone(days[2]["rainProbability"])
@@ -149,7 +149,7 @@ class ServerLogicTests(unittest.TestCase):
             async with fake_open_meteo(forecast=current) as client:
                 return await self.srv.current_weather(client, "Cartagena")
         out = asyncio.run(run())
-        self.assertEqual(out["current"], {"time": "2026-11-23T14:45", "temperature": 31.8, "apparentTemperature": 37.7,
+        self.assertEqual(out["current"], {"time": "2026-11-23T14:45", "weekday": "lunes", "temperature": 31.8, "apparentTemperature": 37.7,
                                           "humidity": 70, "windSpeedKmh": 7.7, "condition": "Llovizna ligera"})
 
     def test_server_contract_for_agentcore(self):

@@ -54,6 +54,8 @@ def normalize_forecast(data) -> dict | None:
             "tempMin": _num(raw.get("tempMin")),
             "condition": raw.get("condition") if isinstance(raw.get("condition"), str) else None,
         }
+        if isinstance(raw.get("weekday"), str) and raw["weekday"]:
+            item["weekday"] = raw["weekday"]
         rain = _num(raw.get("rainProbability"))
         if rain is not None:
             item["rainProbability"] = int(rain)
@@ -62,8 +64,8 @@ def normalize_forecast(data) -> dict | None:
         return None
     location = data.get("location")
     if isinstance(location, dict):
-        parts = [p for p in (location.get("name"), location.get("country")) if isinstance(p, str) and p]
-        location = ", ".join(parts) or None
+        parts = [p for p in (location.get("name"), location.get("admin1"), location.get("country")) if isinstance(p, str) and p]
+        location = ", ".join(dict.fromkeys(parts)) or None
     elif not isinstance(location, str):
         location = None
     return {"location": location, "days": days[:MAX_DAYS]}

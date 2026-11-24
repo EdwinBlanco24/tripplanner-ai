@@ -86,3 +86,27 @@ export function ymdToLocalDate(value: string): Date | null {
   const p = parseYmd(value)
   return p ? new Date(p.y, p.m - 1, p.d, 12, 0, 0) : null
 }
+
+const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+/** Dia de la semana en espanol (minusculas) de un YYYY-MM-DD, calculado sobre Date.UTC (sin desfase por zona). */
+export function weekdayEs(value: string | undefined | null): string | null {
+  const p = value ? parseYmd(value) : null
+  return p ? WEEKDAYS_ES[new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay()] : null
+}
+
+const DMY = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+/** "2026-12-04" -> "4 de diciembre de 2026" (para frases legibles). */
+export function formatDayMonthYear(value: string): string {
+  const p = parseYmd(value)
+  return p ? DMY.format(new Date(Date.UTC(p.y, p.m - 1, p.d))) : value
+}
+
+/** Suma dias a un YYYY-MM-DD sin pasar por zonas horarias. */
+export function addDays(value: string, days: number): string {
+  const p = parseYmd(value)
+  if (!p) return value
+  const d = new Date(Date.UTC(p.y, p.m - 1, p.d + days))
+  return ymdToString({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() })
+}
