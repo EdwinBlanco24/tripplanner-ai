@@ -21,6 +21,8 @@ interface DashData {
   next: TripDetailResponse | null
   /** true solo si se pudo leer y el usuario aun no tiene preferencias (si falla la lectura no se muestra la tarjeta). */
   noPreferences: boolean
+  /** true solo si se pudo leer y ya hay preferencias guardadas (muestra el enlace discreto para editarlas). */
+  hasPreferences: boolean
 }
 
 export function Dashboard() {
@@ -33,7 +35,8 @@ export function Dashboard() {
     ])
     const nextTrip = selectNextTrip(trips, todayBogota())
     const next = nextTrip ? await resources.getTrip(nextTrip.tripId) : null
-    return { trips, reservations, next, noPreferences: prefs.ok && parsePreferences(prefs.p) === null }
+    const parsed = prefs.ok ? parsePreferences(prefs.p) : null
+    return { trips, reservations, next, noPreferences: prefs.ok && parsed === null, hasPreferences: prefs.ok && parsed !== null }
   }, [resources])
 
   const tripTitle = useMemo(() => new Map((data?.trips ?? []).map((t) => [t.tripId, t.title])), [data])
@@ -80,6 +83,14 @@ export function Dashboard() {
                 <Button label="Configurar preferencias" icon="pi pi-sliders-h" />
               </Link>
             </div>
+          )}
+
+          {data.hasPreferences && (
+            <p className="muted prefs-edit-link">
+              <Link to="/preferencias">
+                <i className="pi pi-sliders-h" aria-hidden="true" /> Editar mis preferencias
+              </Link>
+            </p>
           )}
 
           <div className="card">
