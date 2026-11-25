@@ -4,7 +4,7 @@ Planificador de viajes con un asistente conversacional: busca **vuelos reales** 
 
 **Aplicación:** https://d2d27liabon15k.cloudfront.net · **Repositorio:** https://github.com/EdwinBlanco24/tripplanner-ai
 
-Autor: **Edwin Jesús Blanco Vergara** · Programación Agéntica.
+Autores: **Edwin Blanco** y **David Pérez** · Programación Agéntica.
 
 ## Contenido
 
@@ -306,4 +306,4 @@ a2a-trip-planner/
 
 ---
 
-*Edwin Jesús Blanco Vergara · Programación Agéntica.*
+*Edwin Blanco y David Pérez · Programación Agéntica.*
